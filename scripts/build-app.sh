@@ -82,7 +82,7 @@ make_dmg() {
 # Submits to Apple's notary service and waits; prints the log and fails if it isn't accepted.
 notarize() {
     local file=$1 result id status
-    echo "Notarizing $file…"
+    echo "Notarizing ${file}…"
     result=$(xcrun notarytool submit "$file" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json)
     id=$(plutil -extract id raw - <<<"$result")
     status=$(plutil -extract status raw - <<<"$result")
