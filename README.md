@@ -44,6 +44,7 @@ Requires macOS 26 or newer. Soniox bills per audio hour ([pricing](https://sonio
 </p>
 
 A glass strip that floats over any app, full-screen video included, and never takes focus.
+It appears when Luka starts listening and fades out when you finish; <kbd>⌃</kbd><kbd>⌥</kbd><kbd>C</kbd> hides it anytime.
 
 | Do | Result |
 | --- | --- |

@@ -60,12 +60,33 @@ final class CaptionPanelController: NSObject, NSWindowDelegate {
         set { panel.setFrame(newValue, display: true) }
     }
 
+    private var fadeGeneration = 0
+    private var shown = false
+
     func show() {
+        shown = true
+        fadeGeneration += 1
+        if !panel.isVisible { panel.alphaValue = 0 }
         panel.orderFrontRegardless()
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.25
+            panel.animator().alphaValue = 1
+        }
     }
 
     func hide() {
-        panel.orderOut(nil)
+        shown = false
+        fadeGeneration += 1
+        let generation = fadeGeneration
+        setUnlockVisible(false)
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.35
+            panel.animator().alphaValue = 0
+        } completionHandler: {
+            MainActor.assumeIsolated {
+                if generation == self.fadeGeneration { self.panel.orderOut(nil) }
+            }
+        }
     }
 
     // MARK: Frame rules
@@ -135,7 +156,7 @@ final class CaptionPanelController: NSObject, NSWindowDelegate {
         var caption = panel.frame
         caption.size.height -= Self.chrome
         let overPill = unlockPanel.map { $0.alphaValue > 0 && $0.frame.insetBy(dx: -6, dy: -6).contains(mouse) } ?? false
-        setUnlockVisible(panel.isVisible && (caption.contains(mouse) || overPill))
+        setUnlockVisible(shown && (caption.contains(mouse) || overPill))
     }
 
     private func setUnlockVisible(_ visible: Bool) {
@@ -251,7 +272,8 @@ final class CaptionPanelController: NSObject, NSWindowDelegate {
                 guard let self else { return }
                 self.applyHeight()
                 self.applyLevel()
-                if self.model.captionsVisible != self.panel.isVisible {
+                if self.model.captionsVisible != self.shown {
+                    self.shown = self.model.captionsVisible
                     self.model.captionsVisible ? self.show() : self.hide()
                 }
                 self.observe()

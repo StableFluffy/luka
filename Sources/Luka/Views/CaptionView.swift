@@ -329,6 +329,7 @@ struct CaptionToolbar: View {
 
                 toolbarButton("lock", tr("Lock captions (click-through)") + "  ⌃⌥L") { model.lock(true) }
                 toolbarButton("gearshape", tr("Settings…")) { model.openSettings() }
+                toolbarButton("eye.slash", tr("Hide Captions") + "  ⌃⌥C") { model.setCaptions(false) }
                 toolbarButton("rectangle.expand.vertical", tr("Open transcript") + "  ⌃⌥T") {
                     model.openTranscript()
                 }
@@ -400,7 +401,7 @@ struct CaptionMenu: View {
         Divider()
         Button(tr("Lock Captions")) { model.lock(true) }
         Button(tr("Show Transcript")) { model.openTranscript() }
-        Button(tr("Hide Captions")) { model.captionsVisible = false }
+        Button(tr("Hide Captions")) { model.setCaptions(false) }
     }
 }
 

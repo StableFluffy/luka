@@ -71,6 +71,16 @@ private struct CaptionSettings: View {
         @Bindable var model = model
         Form {
             Section {
+                Picker(tr("Show captions"), selection: $model.captionVisibility) {
+                    Text(tr("While listening")).tag(CaptionVisibility.whileListening)
+                    Text(tr("Always")).tag(CaptionVisibility.always)
+                }
+            } footer: {
+                Text(model.captionVisibility == .whileListening
+                     ? tr("Captions fade in when Luka starts listening and out when you finish. ⌃⌥C hides or shows them anytime.")
+                     : tr("Captions stay until you hide them with ⌃⌥C."))
+            }
+            Section {
                 Picker(tr("Style"), selection: $model.captionStyle) {
                     ForEach(CaptionStyle.allCases, id: \.self) { Text($0.title).tag($0) }
                 }

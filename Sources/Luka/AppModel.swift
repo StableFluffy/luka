@@ -6,6 +6,13 @@ enum CaptionStyle: String, CaseIterable, Sendable {
     case glass, clear, dark
 }
 
+enum CaptionVisibility: String, CaseIterable, Sendable {
+    /// Captions come and go with listening.
+    case whileListening
+    /// Captions stay where you left them; toggle by hand.
+    case always
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -29,7 +36,7 @@ final class AppModel {
     @ObservationIgnored private var idleDisconnect: DispatchWorkItem?
     @ObservationIgnored let feedFile: URL?
 
-    private(set) var status: Status = .idle
+    private(set) var status: Status = .idle { didSet { if status != oldValue { followStatusWithCaptions() } } }
     private(set) var level: Float = 0
     private(set) var startedAt: Date?
 
@@ -55,7 +62,16 @@ final class AppModel {
 
     var showsInDock: Bool { didSet { store(showsInDock, "showsInDock"); applyActivationPolicy() } }
 
-    var captionsVisible = true
+    var captionVisibility: CaptionVisibility {
+        didSet {
+            store(captionVisibility.rawValue, "captionVisibility")
+            captionsHiddenByUser = false
+            followStatusWithCaptions()
+        }
+    }
+    private(set) var captionsVisible: Bool
+    @ObservationIgnored private var captionsHiddenByUser = false
+    @ObservationIgnored private var captionsAutoHide: DispatchWorkItem?
     var transcriptVisible = false
     var locked = false
     var renaming: RenameRequest?
@@ -87,6 +103,9 @@ final class AppModel {
         transcriptShowsOriginal = d.object(forKey: "transcriptShowsOriginal") as? Bool ?? true
         transcriptPinned = d.bool(forKey: "transcriptPinned")
         showsInDock = d.object(forKey: "showsInDock") as? Bool ?? true
+        let visibility = CaptionVisibility(rawValue: d.string(forKey: "captionVisibility") ?? "") ?? .whileListening
+        captionVisibility = visibility
+        captionsVisible = visibility == .always ? d.object(forKey: "captionsVisible") as? Bool ?? true : false
 
         let args = ProcessInfo.processInfo.arguments
         feedFile = args.firstIndex(of: "--feed").flatMap { args.indices.contains($0 + 1) ? URL(fileURLWithPath: args[$0 + 1]) : nil }
@@ -305,6 +324,46 @@ final class AppModel {
     func speakerName(_ id: SpeakerID?, in t: Transcript? = nil) -> String {
         guard let speaker = (t ?? transcript).speaker(id) else { return "" }
         return speaker.name.isEmpty ? String(format: tr("Speaker %d"), speaker.ordinal) : speaker.name
+    }
+
+    // MARK: Caption visibility
+
+    /// The user showing or hiding captions by hand.
+    func setCaptions(_ visible: Bool) {
+        captionsAutoHide?.cancel()
+        withAnimation(.smooth) { captionsVisible = visible }
+        if captionVisibility == .always {
+            store(visible, "captionsVisible")
+        } else {
+            // Hiding mid-session sticks until the next session.
+            captionsHiddenByUser = !visible && status != .idle
+        }
+    }
+
+    private func followStatusWithCaptions() {
+        guard captionVisibility == .whileListening else { return }
+        captionsAutoHide?.cancel()
+        switch status {
+        case .connecting, .live, .reconnecting:
+            if !captionsHiddenByUser { captionsVisible = true }
+        case .error:
+            captionsVisible = true
+        case .paused:
+            hideCaptions(after: 60, unlessStatusChanges: .paused)
+        case .idle:
+            captionsHiddenByUser = false
+            // Leave the last lines up long enough to finish reading them.
+            hideCaptions(after: 4, unlessStatusChanges: .idle)
+        }
+    }
+
+    private func hideCaptions(after seconds: Double, unlessStatusChanges expected: Status) {
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.status == expected, self.captionVisibility == .whileListening else { return }
+            self.captionsVisible = false
+        }
+        captionsAutoHide = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds, execute: work)
     }
 
     func lock(_ on: Bool) {

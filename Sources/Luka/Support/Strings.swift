@@ -135,6 +135,11 @@ enum Strings {
         "Yesterday": "어제",
         "from any app": "어느 앱에서나",
         "Swap": "서로 바꾸기",
+        "Show captions": "자막 표시",
+        "While listening": "듣는 동안만",
+        "Always": "항상",
+        "Captions fade in when Luka starts listening and out when you finish. ⌃⌥C hides or shows them anytime.": "듣기를 시작하면 자막이 나타나고, 끝내면 사라집니다. ⌃⌥C로 언제든 숨기거나 보일 수 있습니다.",
+        "Captions stay until you hide them with ⌃⌥C.": "⌃⌥C로 숨길 때까지 자막이 계속 표시됩니다.",
     ]
 
     static let zh: [String: String] = [
@@ -273,5 +278,10 @@ enum Strings {
         "Yesterday": "昨天",
         "from any app": "在任意应用中",
         "Swap": "互换",
+        "Show captions": "显示字幕",
+        "While listening": "仅在收听时",
+        "Always": "始终",
+        "Captions fade in when Luka starts listening and out when you finish. ⌃⌥C hides or shows them anytime.": "开始收听时字幕淡入，结束后淡出。随时可按 ⌃⌥C 隐藏或显示。",
+        "Captions stay until you hide them with ⌃⌥C.": "字幕会一直显示，直到按 ⌃⌥C 隐藏。",
     ]
 }

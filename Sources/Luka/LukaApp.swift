@@ -53,29 +53,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         let captions = CaptionPanelController(model: model)
         self.captions = captions
-        captions.show()
+        if model.captionsVisible { captions.show() }
         model.applyActivationPolicy()
         let chord = controlKey | optionKey
         hotKeys.register([
-            .init(keyCode: kVK_ANSI_N, modifiers: chord) { [model] in
-                model.captionsVisible = true
-                model.newSession(start: true)
-            },
+            .init(keyCode: kVK_ANSI_N, modifiers: chord) { [model] in model.newSession(start: true) },
             .init(keyCode: kVK_ANSI_R, modifiers: chord) { [model] in model.toggleListening() },
-            .init(keyCode: kVK_ANSI_C, modifiers: chord) { [model] in model.captionsVisible.toggle() },
+            .init(keyCode: kVK_ANSI_C, modifiers: chord) { [model] in model.setCaptions(!model.captionsVisible) },
             .init(keyCode: kVK_ANSI_T, modifiers: chord) { [model] in model.toggleTranscriptWindow() },
             .init(keyCode: kVK_ANSI_L, modifiers: chord) { [model] in model.lock(!model.locked) },
         ])
-        if ProcessInfo.processInfo.arguments.contains("--autostart") { model.start() }
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("--autostart") { model.start() }
+        if let i = args.firstIndex(of: "--finish-after"), args.indices.contains(i + 1), let seconds = Double(args[i + 1]) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [model] in model.endSession() }
+        }
         Snapshot.startIfRequested(model: model)
         Demo.startIfRequested(model: model)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
+    /// Clicking the Dock icon opens the transcript; captions follow listening on their own.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        model.captionsVisible = true
-        return true
+        if !model.transcriptVisible { model.openTranscript() }
+        return false
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -155,7 +157,7 @@ struct LukaCommands: Commands {
             }
         }
         CommandGroup(before: .toolbar) {
-            Toggle(tr("Captions"), isOn: Binding(get: { model.captionsVisible }, set: { model.captionsVisible = $0 }))
+            Toggle(tr("Captions"), isOn: Binding(get: { model.captionsVisible }, set: { model.setCaptions($0) }))
                 .keyboardShortcut("1")
             Button(model.transcriptVisible ? tr("Hide Transcript") : tr("Show Transcript")) {
                 if model.transcriptVisible { dismissWindow(id: "transcript") } else { openWindow(id: "transcript") }
@@ -195,14 +197,11 @@ struct MenuBarContent: View {
 
     var body: some View {
         @Bindable var model = model
-        Button(tr("New Transcription") + "  ⌃⌥N") {
-            model.captionsVisible = true
-            model.newSession(start: true)
-        }
+        Button(tr("New Transcription") + "  ⌃⌥N") { model.newSession(start: true) }
         Button((model.isListening ? tr("Pause") : tr("Start Listening")) + "  ⌃⌥R") { model.toggleListening() }
         Text(model.status.label)
         Divider()
-        Toggle(tr("Captions"), isOn: $model.captionsVisible)
+        Toggle(tr("Captions"), isOn: Binding(get: { model.captionsVisible }, set: { model.setCaptions($0) }))
         Toggle(tr("Lock Captions"), isOn: Binding(get: { model.locked }, set: { model.lock($0) }))
         Button(tr("Show Transcript")) { model.openTranscript() }
         Divider()

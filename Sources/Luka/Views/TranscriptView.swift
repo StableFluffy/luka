@@ -331,7 +331,7 @@ struct SessionView: View {
         }
         ToolbarSpacer(.fixed, placement: .primaryAction)
         ToolbarItemGroup(placement: .primaryAction) {
-            Toggle(isOn: $model.captionsVisible) {
+            Toggle(isOn: Binding(get: { model.captionsVisible }, set: { model.setCaptions($0) })) {
                 Label(tr("Captions"), systemImage: "captions.bubble")
             }
             .help(tr("Show Captions") + "  ⌘1")
