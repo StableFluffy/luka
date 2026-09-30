@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-26%2B-black?style=flat-square" alt="macOS 26+">
+  <img src="https://img.shields.io/badge/macOS-15%2B-black?style=flat-square" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6.2-F05138?style=flat-square" alt="Swift 6.2">
   <img src="https://img.shields.io/badge/speech-Soniox%20stt--rt--v5-FF6A3D?style=flat-square" alt="Soniox">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT"></a>
@@ -35,7 +35,7 @@
 3. 在首个窗口粘贴 [Soniox API 密钥](https://console.soniox.com)。
 4. 按 <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>，并允许 **系统音频录制**。
 
-需要 macOS 26 或更高版本。Soniox 按音频时长计费（[价格](https://soniox.com/pricing)）。
+需要 macOS 15 或更高版本；在 macOS 26 上使用 Liquid Glass。Soniox 按音频时长计费（[价格](https://soniox.com/pricing)）。
 
 ## 字幕
 
@@ -99,7 +99,7 @@ API 密钥以 AES-GCM 加密保存在 `~/Library/Application Support/Luka/`，�
 swift test                         # 回放录制的 Soniox 流
 ```
 
-Xcode 26 / Swift 6.2。
+使用 Xcode 26 / Swift 6.2 构建，可在 macOS 15 及以上运行。
 
 ## 许可证
 

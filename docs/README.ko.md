@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-26%2B-black?style=flat-square" alt="macOS 26+">
+  <img src="https://img.shields.io/badge/macOS-15%2B-black?style=flat-square" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6.2-F05138?style=flat-square" alt="Swift 6.2">
   <img src="https://img.shields.io/badge/speech-Soniox%20stt--rt--v5-FF6A3D?style=flat-square" alt="Soniox">
   <a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT"></a>
@@ -35,7 +35,7 @@
 3. 첫 화면에 [Soniox API 키](https://console.soniox.com)를 붙여 넣습니다.
 4. <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>을 누르고 **시스템 오디오 녹음**을 허용합니다.
 
-macOS 26 이상이 필요합니다. Soniox는 오디오 시간당 과금됩니다([요금](https://soniox.com/pricing)).
+macOS 15 이상에서 동작하며, macOS 26에서는 Liquid Glass로 표시됩니다. Soniox는 오디오 시간당 과금됩니다([요금](https://soniox.com/pricing)).
 
 ## 자막
 
@@ -99,7 +99,7 @@ API 키는 `~/Library/Application Support/Luka/`에 AES-GCM으로 암호화되�
 swift test                         # 녹음된 Soniox 스트림 재생 테스트
 ```
 
-Xcode 26 / Swift 6.2.
+Xcode 26 / Swift 6.2로 빌드하고 macOS 15 이상에서 실행됩니다.
 
 ## 라이선스
 

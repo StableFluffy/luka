@@ -61,6 +61,9 @@ final class AppModel {
     var transcriptPinned: Bool { didSet { store(transcriptPinned, "transcriptPinned") } }
 
     var showsInDock: Bool { didSet { store(showsInDock, "showsInDock"); applyActivationPolicy() } }
+    var liquidGlass: Bool { didSet { store(liquidGlass, "liquidGlass") } }
+    /// Liquid Glass needs macOS 26; before that, and when turned off, Luka draws system materials.
+    var usesGlass: Bool { LukaGlassSupport.available && liquidGlass }
 
     var captionVisibility: CaptionVisibility {
         didSet {
@@ -103,6 +106,7 @@ final class AppModel {
         transcriptShowsOriginal = d.object(forKey: "transcriptShowsOriginal") as? Bool ?? true
         transcriptPinned = d.bool(forKey: "transcriptPinned")
         showsInDock = d.object(forKey: "showsInDock") as? Bool ?? true
+        liquidGlass = d.object(forKey: "liquidGlass") == nil ? true : d.bool(forKey: "liquidGlass")
         let visibility = CaptionVisibility(rawValue: d.string(forKey: "captionVisibility") ?? "") ?? .whileListening
         captionVisibility = visibility
         captionsVisible = visibility == .always ? d.object(forKey: "captionsVisible") as? Bool ?? true : false

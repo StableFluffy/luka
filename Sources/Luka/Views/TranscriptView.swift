@@ -258,7 +258,7 @@ struct SessionView: View {
                         .padding(.horizontal, 8)
                         .frame(height: 30)
                 }
-                .buttonStyle(.glassProminent)
+                .lukaGlassButton(prominent: true)
                 .tint(.red)
             } else {
                 ArchivedBar(transcript: transcript)
@@ -270,7 +270,7 @@ struct SessionView: View {
                     Label(tr("Jump to Live"), systemImage: "arrow.down")
                         .font(.callout.weight(.medium))
                 }
-                .buttonStyle(.glass)
+                .lukaGlassButton()
                 .offset(y: -44)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -285,7 +285,7 @@ struct SessionView: View {
                 .font(.callout.weight(.medium))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .glassEffect(.regular, in: .capsule)
+                .lukaGlass(.regular, in: .capsule)
                 .padding(.top, 8)
                 .transition(.move(edge: .top).combined(with: .opacity))
         }
@@ -293,10 +293,12 @@ struct SessionView: View {
 
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
         @Bindable var model = model
-        ToolbarItem(placement: .navigation) {
-            EditableTitle(title: titleBinding, placeholder: AppModel.defaultTitle(transcript.createdAt))
+        if #available(macOS 26, *) {
+            ToolbarItem(placement: .navigation) { titleField }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .navigation) { titleField }
         }
-        .sharedBackgroundVisibility(.hidden)
         if isLive && model.status != .idle {
             ToolbarItem(placement: .navigation) {
                 StatusPill()
@@ -315,7 +317,9 @@ struct SessionView: View {
             }
             .help(tr("Show Original"))
         }
-        ToolbarSpacer(.fixed, placement: .primaryAction)
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
         ToolbarItemGroup(placement: .primaryAction) {
             Toggle(isOn: $editing.animation(.smooth)) {
                 Label(tr("Edit"), systemImage: "pencil")
@@ -329,7 +333,9 @@ struct SessionView: View {
             .keyboardShortcut("c", modifiers: [.command, .shift])
             .disabled(transcript.lines.isEmpty)
         }
-        ToolbarSpacer(.fixed, placement: .primaryAction)
+        if #available(macOS 26, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        }
         ToolbarItemGroup(placement: .primaryAction) {
             Toggle(isOn: Binding(get: { model.captionsVisible }, set: { model.setCaptions($0) })) {
                 Label(tr("Captions"), systemImage: "captions.bubble")
@@ -351,6 +357,10 @@ struct SessionView: View {
             }
             .help(tr("Settings…") + "  ⌘,")
         }
+    }
+
+    private var titleField: some View {
+        EditableTitle(title: titleBinding, placeholder: AppModel.defaultTitle(transcript.createdAt))
     }
 
     private var provisionalJoinsLastTurn: Bool {
@@ -590,7 +600,7 @@ struct ControlBar: View {
 
     var body: some View {
         let streamOpen = model.status != .idle
-        GlassEffectContainer(spacing: 10) {
+        LukaGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
                 Button { model.toggleListening() } label: {
                     HStack(spacing: 10) {
@@ -613,8 +623,8 @@ struct ControlBar: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white)
-                .glassEffect(.regular.tint(model.isListening ? .red : .accentColor).interactive(), in: .capsule)
-                .glassEffectID("listen", in: glass)
+                .lukaGlass(.regular.tint(model.isListening ? .red : .accentColor).interactive(), in: .capsule)
+                .lukaGlassID("listen", in: glass)
                 .keyboardShortcut("r", modifiers: .command)
 
                 if streamOpen {
@@ -625,8 +635,8 @@ struct ControlBar: View {
                             .contentShape(.circle)
                     }
                     .buttonStyle(.plain)
-                    .glassEffect(.regular.interactive(), in: .circle)
-                    .glassEffectID("done", in: glass)
+                    .lukaGlass(.regular.interactive(), in: .circle)
+                    .lukaGlassID("done", in: glass)
                     .help(tr("Finish Session") + "  ⌘.")
                     .keyboardShortcut(".", modifiers: .command)
                 }
@@ -642,13 +652,13 @@ struct ControlBar: View {
                     .contentShape(.capsule)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                .glassEffectID("languages", in: glass)
+                .lukaGlass(.regular.interactive(), in: .capsule)
+                .lukaGlassID("languages", in: glass)
                 .popover(isPresented: $languagesShown, arrowEdge: .top) { LanguagePicker().environment(model) }
 
                 SourceSwitch()
-                    .glassEffect(.regular, in: .capsule)
-                    .glassEffectID("source", in: glass)
+                    .lukaGlass(.regular, in: .capsule)
+                    .lukaGlassID("source", in: glass)
             }
         }
         .animation(.smooth(duration: 0.3), value: model.isListening)
@@ -662,7 +672,7 @@ private struct ArchivedBar: View {
     let transcript: Transcript
 
     var body: some View {
-        GlassEffectContainer(spacing: 10) {
+        LukaGlassContainer(spacing: 10) {
             HStack(spacing: 10) {
                 Button { model.continueSession(transcript) } label: {
                     Label(tr("Continue"), systemImage: "waveform")
@@ -675,7 +685,7 @@ private struct ArchivedBar: View {
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.white)
-                .glassEffect(.regular.tint(.accentColor).interactive(), in: .capsule)
+                .lukaGlass(.regular.tint(.accentColor).interactive(), in: .capsule)
                 Button { withAnimation(.smooth) { model.newSession() } } label: {
                     Label(tr("New Session"), systemImage: "plus")
                         .font(.system(size: 13, weight: .medium))
@@ -686,7 +696,7 @@ private struct ArchivedBar: View {
                         .contentShape(.capsule)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .capsule)
+                .lukaGlass(.regular.interactive(), in: .capsule)
             }
         }
     }
@@ -721,7 +731,7 @@ struct TranscriptEmptyState: View {
                         .frame(width: 240)
                         .onSubmit(save)
                     Button(tr("Save"), action: save)
-                        .buttonStyle(.glassProminent)
+                        .lukaGlassButton(prominent: true)
                         .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
                 Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)

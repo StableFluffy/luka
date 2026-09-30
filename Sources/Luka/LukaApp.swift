@@ -20,6 +20,7 @@ struct LukaApp: App {
         Window("Luka", id: "transcript") {
             TranscriptWindow()
                 .environment(model)
+                .environment(\.usesGlass, model.usesGlass)
                 .id(localizer.language)
         }
         .defaultSize(width: 760, height: 640)
@@ -31,6 +32,7 @@ struct LukaApp: App {
         Settings {
             SettingsView()
                 .environment(model)
+                .environment(\.usesGlass, model.usesGlass)
                 .id(localizer.language)
         }
 

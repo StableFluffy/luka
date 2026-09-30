@@ -140,6 +140,9 @@ enum Strings {
         "Always": "항상",
         "Captions fade in when Luka starts listening and out when you finish. ⌃⌥C hides or shows them anytime.": "듣기를 시작하면 자막이 나타나고, 끝내면 사라집니다. ⌃⌥C로 언제든 숨기거나 보일 수 있습니다.",
         "Captions stay until you hide them with ⌃⌥C.": "⌃⌥C로 숨길 때까지 자막이 계속 표시됩니다.",
+        "Liquid Glass": "Liquid Glass",
+        "Turn off for solid, higher-contrast captions and controls.": "끄면 자막과 컨트롤이 불투명해져 더 또렷하게 보입니다.",
+        "Liquid Glass needs macOS 26. Luka uses system materials on this Mac.": "Liquid Glass는 macOS 26이 필요합니다. 이 Mac에서는 시스템 재질로 표시됩니다.",
     ]
 
     static let zh: [String: String] = [
@@ -283,5 +286,8 @@ enum Strings {
         "Always": "始终",
         "Captions fade in when Luka starts listening and out when you finish. ⌃⌥C hides or shows them anytime.": "开始收听时字幕淡入，结束后淡出。随时可按 ⌃⌥C 隐藏或显示。",
         "Captions stay until you hide them with ⌃⌥C.": "字幕会一直显示，直到按 ⌃⌥C 隐藏。",
+        "Liquid Glass": "Liquid Glass",
+        "Turn off for solid, higher-contrast captions and controls.": "关闭后字幕和控件不透明，对比度更高。",
+        "Liquid Glass needs macOS 26. Luka uses system materials on this Mac.": "Liquid Glass 需要 macOS 26。在这台 Mac 上 Luka 使用系统材质。",
     ]
 }

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/macOS-26%2B-black?style=flat-square" alt="macOS 26+">
+  <img src="https://img.shields.io/badge/macOS-15%2B-black?style=flat-square" alt="macOS 15+">
   <img src="https://img.shields.io/badge/Swift-6.2-F05138?style=flat-square" alt="Swift 6.2">
   <img src="https://img.shields.io/badge/speech-Soniox%20stt--rt--v5-FF6A3D?style=flat-square" alt="Soniox">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT"></a>
@@ -35,7 +35,7 @@
 3. Paste a [Soniox API key](https://console.soniox.com) into the first window.
 4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd> and allow **System Audio Recording** when asked.
 
-Requires macOS 26 or newer. Soniox bills per audio hour ([pricing](https://soniox.com/pricing)).
+Requires macOS 15 or newer; Liquid Glass on macOS 26. Soniox bills per audio hour ([pricing](https://soniox.com/pricing)).
 
 ## Captions
 
@@ -99,7 +99,7 @@ The API key is AES-GCM encrypted in `~/Library/Application Support/Luka/`, sessi
 swift test                         # replays recorded Soniox streams
 ```
 
-Xcode 26 / Swift 6.2. Debug flags: `--feed file.pcm` streams a 16 kHz mono file instead of live audio.
+Builds with Xcode 26 / Swift 6.2 and runs on macOS 15+. Debug flags: `--feed file.pcm` streams a 16 kHz mono file instead of live audio.
 
 ## License
 

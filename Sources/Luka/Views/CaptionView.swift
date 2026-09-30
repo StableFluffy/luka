@@ -16,7 +16,7 @@ struct CaptionRoot: View {
         let showStatus = !showToolbar && model.hasKey && !model.transcript.isEmpty
             && [.connecting, .reconnecting, .paused].contains(model.status)
         // Spacing below the gaps between pieces: they morph out of the caption but don't fuse at rest.
-        GlassEffectContainer(spacing: 6) {
+        LukaGlassContainer(spacing: 6) {
             VStack(spacing: CaptionPanelController.toolbarGap) {
                 ZStack(alignment: .bottom) {
                     Color.clear
@@ -25,8 +25,8 @@ struct CaptionRoot: View {
                             .font(.callout.weight(.medium))
                             .padding(.horizontal, 14)
                             .frame(height: 34)
-                            .glassEffect(.regular, in: .capsule)
-                            .glassEffectID("notice", in: glass)
+                            .lukaGlass(.regular, in: .capsule)
+                            .lukaGlassID("notice", in: glass)
                             .transition(.opacity)
                     } else if showToolbar {
                         CaptionToolbar(namespace: glass, languagesShown: $languagesShown)
@@ -41,16 +41,16 @@ struct CaptionRoot: View {
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 12)
                         .frame(height: 28)
-                        .glassEffect(.regular, in: .capsule)
-                        .glassEffectID("status", in: glass)
+                        .lukaGlass(.regular, in: .capsule)
+                        .lukaGlassID("status", in: glass)
                         .transition(.opacity)
                     }
                 }
                 .frame(height: CaptionPanelController.toolbarHeight)
 
                 CaptionSurface(metrics: metrics)
-                    .glassEffect(model.captionStyle.glass, in: .rect(cornerRadius: cornerRadius))
-                    .glassEffectID("caption", in: glass)
+                    .lukaGlass(model.captionStyle.glass, in: .rect(cornerRadius: cornerRadius))
+                    .lukaGlassID("caption", in: glass)
                     .onHover { setHover($0) }
                     .overlay { ResizeHandles(metrics: metrics) }
                     .environment(\.colorScheme, model.captionStyle == .dark ? .dark : colorScheme)
@@ -59,6 +59,7 @@ struct CaptionRoot: View {
         .animation(.smooth(duration: 0.3), value: showToolbar)
         .animation(.smooth(duration: 0.3), value: showStatus)
         .animation(.smooth(duration: 0.3), value: model.notice)
+        .environment(\.usesGlass, model.usesGlass)
         .popover(item: Binding(get: { model.renaming?.place == .caption ? model.renaming : nil },
                                set: { if $0 == nil { model.renaming = nil } }),
                  attachmentAnchor: .rect(.bounds), arrowEdge: .top) { request in
@@ -87,7 +88,7 @@ struct CaptionRoot: View {
 }
 
 extension CaptionStyle {
-    var glass: Glass {
+    var glass: LukaGlass {
         switch self {
         case .glass: .regular
         case .clear: .clear
@@ -209,7 +210,7 @@ struct CaptionPlaceholder: View {
                 Text(tr("Add your Soniox API key to start."))
                     .foregroundStyle(.secondary)
                 Button(tr("Open Settings…")) { model.openSettings() }
-                    .buttonStyle(.glass)
+                    .lukaGlassButton()
                     .controlSize(.small)
             } else {
                 switch model.status {
@@ -217,7 +218,7 @@ struct CaptionPlaceholder: View {
                     Button { model.start() } label: {
                         Label(tr("Start Listening"), systemImage: "waveform")
                     }
-                    .buttonStyle(.glassProminent)
+                    .lukaGlassButton(prominent: true)
                     .controlSize(.regular)
                     KeyCaps(keys: GlobalShortcut.newSession.keys, size: 11)
                     Text(tr("from any app")).foregroundStyle(.tertiary)
@@ -225,7 +226,7 @@ struct CaptionPlaceholder: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     Text(message).foregroundStyle(.secondary).lineLimit(2)
                     Button(tr("Try Again")) { model.start() }
-                        .buttonStyle(.glass)
+                        .lukaGlassButton()
                         .controlSize(.small)
                 default:
                     ListeningText(label: model.status.label)
@@ -297,8 +298,8 @@ struct CaptionToolbar: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
-            .glassEffect(.regular.tint(model.isListening ? .red : .accentColor).interactive(), in: .capsule)
-            .glassEffectID("play", in: namespace)
+            .lukaGlass(.regular.tint(model.isListening ? .red : .accentColor).interactive(), in: .capsule)
+            .lukaGlassID("play", in: namespace)
             .help(model.isListening ? tr("Pause") : tr("Start Listening"))
 
             HStack(spacing: 2) {
@@ -336,12 +337,12 @@ struct CaptionToolbar: View {
             }
             .padding(.horizontal, 2)
             .frame(height: 34)
-            .glassEffect(.regular, in: .capsule)
-            .glassEffectID("tools", in: namespace)
+            .lukaGlass(.regular, in: .capsule)
+            .lukaGlassID("tools", in: namespace)
 
             SourceSwitch(height: 34)
-                .glassEffect(.regular, in: .capsule)
-                .glassEffectID("source", in: namespace)
+                .lukaGlass(.regular, in: .capsule)
+                .lukaGlassID("source", in: namespace)
         }
         .font(.system(size: 13, weight: .semibold))
     }
@@ -453,8 +454,9 @@ struct UnlockPill: View {
             .contentShape(.capsule)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .lukaGlass(.regular.interactive(), in: .capsule)
         .padding(2)
         .fixedSize()
+        .environment(\.usesGlass, model.usesGlass)
     }
 }

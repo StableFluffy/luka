@@ -71,6 +71,14 @@ private struct CaptionSettings: View {
         @Bindable var model = model
         Form {
             Section {
+                Toggle(tr("Liquid Glass"), isOn: $model.liquidGlass)
+                    .disabled(!LukaGlassSupport.available)
+            } footer: {
+                Text(LukaGlassSupport.available
+                     ? tr("Turn off for solid, higher-contrast captions and controls.")
+                     : tr("Liquid Glass needs macOS 26. Luka uses system materials on this Mac."))
+            }
+            Section {
                 Picker(tr("Show captions"), selection: $model.captionVisibility) {
                     Text(tr("While listening")).tag(CaptionVisibility.whileListening)
                     Text(tr("Always")).tag(CaptionVisibility.always)
