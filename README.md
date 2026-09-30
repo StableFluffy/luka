@@ -29,13 +29,11 @@
 ## Install
 
 1. Download `Luka-<version>.dmg` from [Releases](../../releases) and drag **Luka** into **Applications**.
-2. Open Luka. Builds aren't notarized yet, so macOS stops the first launch:
-   **System Settings › Privacy & Security** → scroll down → **Open Anyway**.
-   Or once in Terminal: `xattr -dr com.apple.quarantine /Applications/Luka.app`
+2. Open Luka. Builds are signed and notarized by Apple, so it opens like any other app.
 3. Paste a [Soniox API key](https://console.soniox.com) into the first window.
 4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd> and allow **System Audio Recording** when asked.
 
-Requires macOS 15 or newer; Liquid Glass on macOS 26. Soniox bills per audio hour ([pricing](https://soniox.com/pricing)).
+Requires macOS 15 or newer; Liquid Glass on macOS 26 and later. Soniox bills per audio hour ([pricing](https://soniox.com/pricing)).
 
 ## Captions
 
@@ -96,6 +94,7 @@ The API key is AES-GCM encrypted in `~/Library/Application Support/Luka/`, sessi
 ```sh
 ./scripts/build-app.sh --install   # ~/Applications/Luka.app
 ./scripts/build-app.sh --dmg       # build/Luka-<version>.dmg
+./scripts/build-app.sh --release   # signed + notarized DMG and zip (Developer ID)
 swift test                         # replays recorded Soniox streams
 ```
 

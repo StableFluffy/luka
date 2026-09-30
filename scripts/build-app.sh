@@ -18,8 +18,12 @@ IDENTITY="${LUKA_SIGN_IDENTITY:-$(security find-identity -v -p codesigning | awk
 NOTARY_PROFILE="${LUKA_NOTARY_PROFILE:-luka-notary}"
 
 build_app() {
-    # Keep the build machine's paths out of the binary: map them away and strip debug symbols.
-    local flags=(-c release --product Luka -Xswiftc -file-prefix-map -Xswiftc "$PWD=.")
+    # SwiftPM's swiftbuild engine stamps the deployment target as the SDK version, which makes
+    # macOS run the app in compatibility mode (no Liquid Glass chrome). Pass the real SDK version.
+    local minos sdk
+    minos=$(/usr/libexec/PlistBuddy -c "Print LSMinimumSystemVersion" Resources/Info.plist)
+    sdk=$(xcrun --sdk macosx --show-sdk-version)
+    local flags=(-c release --product Luka -Xlinker -platform_version -Xlinker macos -Xlinker "$minos" -Xlinker "$sdk")
     swift build "${flags[@]}"
     local bin
     bin="$(swift build "${flags[@]}" --show-bin-path)/Luka"
@@ -27,7 +31,16 @@ build_app() {
     rm -rf "$APP"
     mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
     cp "$bin" "$APP/Contents/MacOS/Luka"
+    # Debug symbols record absolute build paths; strip them and make sure none are left.
     strip -S -x "$APP/Contents/MacOS/Luka"
+    if LC_ALL=C grep -q -a -F "$HOME" "$APP/Contents/MacOS/Luka"; then
+        echo "Build paths leaked into the binary" >&2
+        exit 1
+    fi
+    if ! vtool -show-build "$APP/Contents/MacOS/Luka" | grep -q "sdk $sdk"; then
+        echo "Binary is not stamped with SDK $sdk" >&2
+        exit 1
+    fi
     cp Resources/Info.plist "$APP/Contents/Info.plist"
     cp -R Resources/*.lproj "$APP/Contents/Resources/"
     cp Resources/AppIcon.icns "$APP/Contents/Resources/"

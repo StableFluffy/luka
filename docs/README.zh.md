@@ -29,13 +29,11 @@
 ## 安装
 
 1. 从 [Releases](../../../releases) 下载 `Luka-<版本>.dmg`，把 **Luka** 拖到 **应用程序**。
-2. 打开 Luka。当前版本尚未公证，首次打开会被 macOS 拦下：
-   **系统设置 › 隐私与安全性** → 向下滚动 → **仍要打开**。
-   或在终端执行一次：`xattr -dr com.apple.quarantine /Applications/Luka.app`
+2. 打开 Luka。该版本已由 Apple 签名并公证，可像其他应用一样直接打开。
 3. 在首个窗口粘贴 [Soniox API 密钥](https://console.soniox.com)。
 4. 按 <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>，并允许 **系统音频录制**。
 
-需要 macOS 15 或更高版本；在 macOS 26 上使用 Liquid Glass。Soniox 按音频时长计费（[价格](https://soniox.com/pricing)）。
+需要 macOS 15 或更高版本；在 macOS 26 及以上使用 Liquid Glass。Soniox 按音频时长计费（[价格](https://soniox.com/pricing)）。
 
 ## 字幕
 
