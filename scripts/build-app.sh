@@ -6,13 +6,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-swift build -c release --product Luka
-BIN="$(swift build -c release --show-bin-path)/Luka"
+# Keep the build machine's paths out of the binary: map them away and strip debug symbols.
+FLAGS=(-c release --product Luka -Xswiftc -file-prefix-map -Xswiftc "$PWD=.")
+swift build "${FLAGS[@]}"
+BIN="$(swift build "${FLAGS[@]}" --show-bin-path)/Luka"
 APP=build/Luka.app
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Luka"
+strip -S -x "$APP/Contents/MacOS/Luka"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp -R Resources/*.lproj "$APP/Contents/Resources/"
 [ -f Resources/AppIcon.icns ] && cp Resources/AppIcon.icns "$APP/Contents/Resources/"
@@ -27,7 +30,7 @@ elif [ "${1:-}" = "--zip" ]; then
     VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
     ZIP="build/Luka-$VERSION.zip"
     rm -f "$ZIP"
-    ditto -c -k --keepParent "$APP" "$ZIP"
+    ditto -c -k --norsrc --noextattr --keepParent "$APP" "$ZIP"
     echo "Packaged $ZIP"
 elif [ "${1:-}" = "--dmg" ]; then
     VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
