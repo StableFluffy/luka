@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds Luka.app into ./build. Pass --install to copy it to ~/Applications.
+# Builds Luka.app into ./build. --install copies it to ~/Applications; --zip makes a release archive.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -20,6 +20,12 @@ if [ "${1:-}" = "--install" ]; then
     rm -rf ~/Applications/Luka.app
     cp -R "$APP" ~/Applications/
     echo "Installed ~/Applications/Luka.app"
+elif [ "${1:-}" = "--zip" ]; then
+    VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" Resources/Info.plist)
+    ZIP="build/Luka-$VERSION.zip"
+    rm -f "$ZIP"
+    ditto -c -k --keepParent "$APP" "$ZIP"
+    echo "Packaged $ZIP"
 else
     echo "Built $APP"
 fi

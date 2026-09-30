@@ -2,11 +2,27 @@
 
 Native macOS 26+ live captions, transcription and translation, powered by Soniox (`stt-rt-v5`).
 
+## Setup
+
+1. Create an API key at [console.soniox.com](https://console.soniox.com). Soniox bills per audio hour; see [soniox.com/pricing](https://soniox.com/pricing).
+2. Open Luka and paste the key into the first window (or Settings › General). It is stored AES-GCM encrypted in `~/Library/Application Support/Luka/`, never sent anywhere but Soniox.
+3. Press ⌃⌥N. macOS asks once for **System Audio Recording** (and **Microphone** if you pick it).
+
+Luka talks to Soniox directly over WebSocket; there is no server in between.
+
+## Install
+
+| From | Steps |
+|---|---|
+| Source | `./scripts/build-app.sh --install` → `~/Applications/Luka.app` (Xcode 26, macOS 26+) |
+| A release zip | Unzip and move `Luka.app` to Applications. Builds are ad-hoc signed, not notarized: open it once, then System Settings › Privacy & Security › **Open Anyway**. Or run `xattr -dr com.apple.quarantine /Applications/Luka.app`. |
+
 ## Build
 
 ```sh
 ./scripts/build-app.sh            # → build/Luka.app
 ./scripts/build-app.sh --install  # → ~/Applications/Luka.app
+./scripts/build-app.sh --zip      # → build/Luka-<version>.zip for a release
 swift test                        # replays recorded Soniox streams
 ```
 

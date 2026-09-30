@@ -8,7 +8,7 @@ struct TranscriptWindow: View {
     var body: some View {
         NavigationSplitView(columnVisibility: $columns) {
             SessionSidebar()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 320)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 270, max: 380)
         } detail: {
             if let t = model.selectedTranscript {
                 SessionView(transcript: t)
@@ -186,7 +186,8 @@ struct SessionView: View {
             .safeAreaInset(edge: .bottom) { bottomBar }
             .overlay(alignment: .top) { noticeView }
             .toolbar { toolbarContent }
-            .navigationTitle(titleBinding)
+            .navigationTitle(model.title(transcript))
+            .toolbar(removing: .title)
             .onChange(of: isStreaming) { if isStreaming { editing = false } }
             .confirmationDialog(tr("Delete this session?"), isPresented: $confirmingDelete) {
                 Button(tr("Delete"), role: .destructive) { withAnimation(.smooth) { model.deleteSession(transcript.id) } }
@@ -292,7 +293,11 @@ struct SessionView: View {
 
     @ToolbarContentBuilder private var toolbarContent: some ToolbarContent {
         @Bindable var model = model
-        if isLive {
+        ToolbarItem(placement: .navigation) {
+            EditableTitle(title: titleBinding, placeholder: AppModel.defaultTitle(transcript.createdAt))
+        }
+        .sharedBackgroundVisibility(.hidden)
+        if isLive && model.status != .idle {
             ToolbarItem(placement: .navigation) {
                 StatusPill()
             }
@@ -499,6 +504,50 @@ private struct EditableLine: View {
             .textFieldStyle(.plain)
             .font(.system(size: size))
             .foregroundStyle(secondary ? .secondary : .primary)
+    }
+}
+
+/// The session title, edited in place: click it, type, press Return.
+struct EditableTitle: View {
+    @Binding var title: String
+    let placeholder: String
+    @State private var draft = ""
+    @State private var hovering = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        TextField(placeholder, text: $draft)
+            .textFieldStyle(.plain)
+            .font(.system(size: 15, weight: .semibold))
+            .focused($focused)
+            .fixedSize()
+            .frame(minWidth: 120, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(.primary.opacity(focused ? 0.08 : hovering ? 0.05 : 0)))
+            .onHover { hovering = $0 }
+            .animation(.smooth(duration: 0.15), value: hovering)
+            .animation(.smooth(duration: 0.15), value: focused)
+            .help(tr("Rename…"))
+            .onAppear { draft = title }
+            .onChange(of: title) { if !focused { draft = title } }
+            .onChange(of: focused) { if !focused { commit() } }
+            .onSubmit {
+                commit()
+                focused = false
+            }
+            .onExitCommand {
+                draft = title
+                focused = false
+            }
+    }
+
+    private func commit() {
+        let trimmed = draft.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { draft = placeholder }
+        if draft != title { title = draft }
     }
 }
 
