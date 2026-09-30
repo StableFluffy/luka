@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Luka 会转写并翻译麦克风收到的语音。";
+"NSAudioCaptureUsageDescription" = "Luka 会转写并翻译 Mac 正在播放的音频。";

@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Luka가 마이크로 들리는 말을 받아쓰고 번역합니다.";
+"NSAudioCaptureUsageDescription" = "Luka가 Mac에서 재생되는 오디오를 받아쓰고 번역합니다.";
