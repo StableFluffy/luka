@@ -55,6 +55,11 @@ final class CaptionPanelController: NSObject, NSWindowDelegate {
 
     var isVisible: Bool { panel.isVisible }
 
+    var frame: NSRect {
+        get { panel.frame }
+        set { panel.setFrame(newValue, display: true) }
+    }
+
     func show() {
         panel.orderFrontRegardless()
     }

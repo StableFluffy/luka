@@ -20,7 +20,12 @@ final class SessionStore {
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        directory = base.appendingPathComponent("Luka/Sessions", isDirectory: true)
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "--sessions-dir"), args.indices.contains(i + 1) {
+            directory = URL(fileURLWithPath: args[i + 1], isDirectory: true)
+        } else {
+            directory = base.appendingPathComponent("Luka/Sessions", isDirectory: true)
+        }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let decoder = JSONDecoder()
         let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []

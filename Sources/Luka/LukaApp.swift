@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ])
         if ProcessInfo.processInfo.arguments.contains("--autostart") { model.start() }
         Snapshot.startIfRequested(model: model)
+        Demo.startIfRequested(model: model)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
