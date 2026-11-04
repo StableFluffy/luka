@@ -1,7 +1,7 @@
 import Foundation
 
 public enum Languages {
-    /// Soniox real-time languages (stt-rt-v5), ISO 639-1.
+    /// Soniox real-time languages (stt-rt-v6), ISO 639-1.
     public static let all: [String] = [
         "af", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs", "cy", "da", "de", "el", "en", "es", "et",
         "eu", "fa", "fi", "fr", "gl", "gu", "he", "hi", "hr", "hu", "id", "it", "ja", "kk", "kn", "ko",

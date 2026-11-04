@@ -81,7 +81,7 @@ public struct SessionConfig: Sendable, Equatable {
         self.context = context
     }
 
-    public static let model = "stt-rt-v5"
+    public static let model = "stt-rt-v6"
 
     public func payload(apiKey: String, carryover: String? = nil) -> [String: Any] {
         var cfg: [String: Any] = [
