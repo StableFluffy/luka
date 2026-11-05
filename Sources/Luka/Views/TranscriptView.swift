@@ -153,7 +153,7 @@ private struct SessionRow: View {
         guard renaming else { return }
         let t = row.id == model.transcript.id ? model.transcript : model.store.transcript(row.id)
         if let t {
-            t.title = draft == AppModel.defaultTitle(t.createdAt) ? "" : draft.trimmingCharacters(in: .whitespaces)
+            t.title = draft == AppModel.defaultTitle(t) ? "" : draft.trimmingCharacters(in: .whitespaces)
             model.store.save(t)
         }
         done()
@@ -202,7 +202,7 @@ struct SessionView: View {
             get: { model.title(transcript) },
             set: { value in
                 let trimmed = value.trimmingCharacters(in: .whitespaces)
-                transcript.title = trimmed == AppModel.defaultTitle(transcript.createdAt) ? "" : trimmed
+                transcript.title = trimmed == AppModel.defaultTitle(transcript) ? "" : trimmed
                 model.store.save(transcript)
             })
     }
@@ -360,7 +360,7 @@ struct SessionView: View {
     }
 
     private var titleField: some View {
-        EditableTitle(title: titleBinding, placeholder: AppModel.defaultTitle(transcript.createdAt))
+        EditableTitle(title: titleBinding, placeholder: AppModel.defaultTitle(transcript))
     }
 
     private var provisionalJoinsLastTurn: Bool {
