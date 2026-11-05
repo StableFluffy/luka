@@ -73,7 +73,11 @@ public struct TranscriptSnapshot: Codable, Sendable {
 @Observable
 public final class Transcript: Identifiable {
     public let id: UUID
-    public let createdAt: Date
+    /// When listening first started; until then, when the session was opened.
+    public private(set) var createdAt: Date
+    /// Whether listening has started in this session. Saved sessions always have lines, so this is only for new ones.
+    public var hasStarted: Bool { !lines.isEmpty || startedListening }
+    private var startedListening = false
     public var title: String { didSet { if title != oldValue { touch() } } }
     public private(set) var updatedAt: Date
     /// Bumped on every content change; used to decide when to save.
@@ -118,6 +122,13 @@ public final class Transcript: Identifiable {
         TranscriptSnapshot(id: id, title: title, createdAt: createdAt, updatedAt: updatedAt, lines: lines,
                            speakers: speakerOrder.compactMap { speakers[$0] }, speakerOrder: speakerOrder,
                            epoch: epoch, nextLineID: nextLineID, nextOrdinal: nextOrdinal, nextColor: nextColor)
+    }
+
+    /// Stamps the session with the time listening first starts.
+    public func markStarted(at date: Date = .now) {
+        guard !hasStarted else { return }
+        startedListening = true
+        createdAt = date
     }
 
     private func touch() {

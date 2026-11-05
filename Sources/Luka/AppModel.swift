@@ -165,6 +165,7 @@ final class AppModel {
             status = .live
         }
         if startedAt == nil { startedAt = .now }
+        transcript.markStarted()
         Task {
             do {
                 try await audio.start(audioSource, feedFile: feedFile)
@@ -196,7 +197,7 @@ final class AppModel {
     /// Saves the current session and opens a fresh one.
     func newSession(start startNow: Bool = false) {
         endSession()
-        if !transcript.lines.isEmpty || transcript.id != selectedID {
+        if transcript.hasStarted || transcript.id != selectedID {
             transcript = Transcript()
             store.track(transcript)
         }
@@ -249,7 +250,12 @@ final class AppModel {
     }
 
     func title(_ t: Transcript) -> String {
-        t.title.isEmpty ? Self.defaultTitle(t.createdAt) : t.title
+        t.title.isEmpty ? Self.defaultTitle(t) : t.title
+    }
+
+    /// Until listening starts, a session has no meaningful time, so it is just "New Session".
+    static func defaultTitle(_ t: Transcript) -> String {
+        t.hasStarted ? defaultTitle(t.createdAt) : tr("New Session")
     }
 
     static func defaultTitle(_ date: Date) -> String {
