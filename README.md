@@ -28,10 +28,18 @@
 
 ## Install
 
-1. Download `Luka-<version>.dmg` from [Releases](../../releases) and drag **Luka** into **Applications**.
-2. Open Luka. Builds are signed and notarized by Apple, so it opens like any other app.
-3. Paste a [Soniox API key](https://console.soniox.com) into the first window.
-4. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd> and allow **System Audio Recording** when asked.
+Paste this into Terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/StableFluffy/luka/main/install.sh | sh
+```
+
+It installs the latest release into Applications (or updates it there), checks that the app is signed and notarized, and opens it. The same command updates Luka later. Prefer a disk image? Download `Luka-<version>.dmg` from [Releases](../../releases) and drag **Luka** into **Applications**.
+
+Then:
+
+1. Paste a [Soniox API key](https://console.soniox.com) into the first window.
+2. Press <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd> and allow **System Audio Recording** when asked.
 
 Requires macOS 15 or newer; Liquid Glass on macOS 26 and later. Soniox bills per audio hour ([pricing](https://soniox.com/pricing)).
 

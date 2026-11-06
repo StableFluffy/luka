@@ -28,10 +28,18 @@
 
 ## 설치
 
-1. [Releases](../../../releases)에서 `Luka-<버전>.dmg`를 받아 **Luka**를 **응용 프로그램**으로 끌어 놓습니다.
-2. Luka를 엽니다. Apple 서명과 공증을 거친 빌드라 다른 앱처럼 바로 열립니다.
-3. 첫 화면에 [Soniox API 키](https://console.soniox.com)를 붙여 넣습니다.
-4. <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>을 누르고 **시스템 오디오 녹음**을 허용합니다.
+터미널에 붙여 넣으세요.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/StableFluffy/luka/main/install.sh | sh
+```
+
+최신 릴리즈를 응용 프로그램 폴더에 설치하고(이미 있으면 업데이트), Apple 서명과 공증을 확인한 뒤 실행합니다. 나중에 업데이트할 때도 같은 명령을 쓰면 됩니다. 디스크 이미지가 편하다면 [Releases](../../../releases)에서 `Luka-<버전>.dmg`를 받아 **Luka**를 **응용 프로그램**으로 끌어 놓으세요.
+
+그다음:
+
+1. 첫 화면에 [Soniox API 키](https://console.soniox.com)를 붙여 넣습니다.
+2. <kbd>⌃</kbd><kbd>⌥</kbd><kbd>N</kbd>을 누르고 **시스템 오디오 녹음**을 허용합니다.
 
 macOS 15 이상에서 동작하며, macOS 26 이상에서는 Liquid Glass로 표시됩니다. Soniox는 오디오 시간당 과금됩니다([요금](https://soniox.com/pricing)).
 
