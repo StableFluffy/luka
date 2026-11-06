@@ -48,6 +48,7 @@ private struct GeneralSettings: View {
             }
             Section {
                 SourcePicker()
+                MicrophonePicker()
                 LabeledContent(tr("Languages")) { Text(model.languageSummary).foregroundStyle(.secondary) }
             } footer: {
                 Text(tr("Change languages from the globe button while listening."))
@@ -66,6 +67,24 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .frame(height: 470)
+    }
+}
+
+private struct MicrophonePicker: View {
+    @Environment(AppModel.self) private var model
+    @State private var devices = InputDevices.shared
+
+    var body: some View {
+        @Bindable var model = model
+        Picker(tr("Microphone"), selection: $model.microphone) {
+            Text(tr("System Default")).tag(String?.none)
+            Divider()
+            ForEach(devices.all) { Text($0.name).tag(Optional($0.uid)) }
+            if let uid = model.microphone, !devices.all.contains(where: { $0.uid == uid }) {
+                Text(tr("Disconnected device")).tag(Optional(uid))
+            }
+        }
+        .disabled(model.audioSource == .system)
     }
 }
 

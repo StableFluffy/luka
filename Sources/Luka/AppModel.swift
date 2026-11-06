@@ -55,6 +55,14 @@ final class AppModel {
     var languageB: String { didSet { store(languageB, "languageB"); streamSettingsChanged() } }
     var context: String { didSet { store(context, "context") } }
     var audioSource: AudioSource { didSet { store(audioSource.rawValue, "audioSource"); audioSourceChanged() } }
+    /// Core Audio UID of the chosen input device; nil follows the system default.
+    var microphone: String? {
+        didSet {
+            guard microphone != oldValue else { return }
+            if let microphone { store(microphone, "microphone") } else { defaults.removeObject(forKey: "microphone") }
+            if audioSource != .system { audioSourceChanged() }
+        }
+    }
     var pausesWhenQuiet: Bool {
         didSet {
             store(pausesWhenQuiet, "pausesWhenQuiet")
@@ -109,6 +117,7 @@ final class AppModel {
         languageB = d.string(forKey: "languageB") ?? preferred
         context = d.string(forKey: "context") ?? ""
         audioSource = AudioSource(rawValue: d.string(forKey: "audioSource") ?? "") ?? .system
+        microphone = d.string(forKey: "microphone")
         pausesWhenQuiet = d.object(forKey: "pausesWhenQuiet") == nil ? true : d.bool(forKey: "pausesWhenQuiet")
         quiet = QuietGate(sleepAfterSeconds: d.object(forKey: "quietSeconds") == nil ? 180 : d.integer(forKey: "quietSeconds"))
         captionLines = d.object(forKey: "captionLines") as? Int ?? 2
@@ -180,7 +189,7 @@ final class AppModel {
         transcript.markStarted()
         Task {
             do {
-                try await audio.start(audioSource, feedFile: feedFile)
+                try await audio.start(audioSource, microphone: microphone, feedFile: feedFile)
             } catch {
                 client.disconnect()
                 status = .error(error.localizedDescription)
@@ -361,7 +370,7 @@ final class AppModel {
         guard audio.isRunning else { return }
         Task {
             do {
-                try await audio.start(audioSource, feedFile: feedFile)
+                try await audio.start(audioSource, microphone: microphone, feedFile: feedFile)
             } catch {
                 status = .error(error.localizedDescription)
             }
