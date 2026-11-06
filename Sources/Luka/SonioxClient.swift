@@ -35,7 +35,7 @@ final class SonioxClient {
         self.apiKey = apiKey
         self.config = config
         attempts = 0
-        open(carryover: nil)
+        open(carryover: carryover())
     }
 
     private func open(carryover: String?) {

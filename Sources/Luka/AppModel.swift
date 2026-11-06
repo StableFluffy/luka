@@ -18,6 +18,8 @@ enum CaptionVisibility: String, CaseIterable, Sendable {
 final class AppModel {
     enum Status: Equatable {
         case idle, connecting, live, paused, reconnecting
+        /// Paused by itself because it went quiet; capture keeps running locally to notice sound again.
+        case standby
         case error(String)
     }
 
@@ -34,6 +36,9 @@ final class AppModel {
     @ObservationIgnored let audio = AudioPipeline()
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private var idleDisconnect: DispatchWorkItem?
+    @ObservationIgnored private var quiet: QuietGate
+    /// The last 2 s heard during standby, sent on waking so the first words aren't lost.
+    @ObservationIgnored private var preroll: [Data] = []
     @ObservationIgnored let feedFile: URL?
 
     private(set) var status: Status = .idle { didSet { if status != oldValue { followStatusWithCaptions() } } }
@@ -50,6 +55,13 @@ final class AppModel {
     var languageB: String { didSet { store(languageB, "languageB"); streamSettingsChanged() } }
     var context: String { didSet { store(context, "context") } }
     var audioSource: AudioSource { didSet { store(audioSource.rawValue, "audioSource"); audioSourceChanged() } }
+    var pausesWhenQuiet: Bool {
+        didSet {
+            store(pausesWhenQuiet, "pausesWhenQuiet")
+            quiet.reset()
+            if !pausesWhenQuiet, status == .standby { wake() }
+        }
+    }
 
     var captionLines: Int { didSet { store(captionLines, "captionLines") } }
     var captionFontSize: Double { didSet { store(captionFontSize, "captionFontSize") } }
@@ -97,6 +109,8 @@ final class AppModel {
         languageB = d.string(forKey: "languageB") ?? preferred
         context = d.string(forKey: "context") ?? ""
         audioSource = AudioSource(rawValue: d.string(forKey: "audioSource") ?? "") ?? .system
+        pausesWhenQuiet = d.object(forKey: "pausesWhenQuiet") == nil ? true : d.bool(forKey: "pausesWhenQuiet")
+        quiet = QuietGate(sleepAfterSeconds: d.object(forKey: "quietSeconds") == nil ? 180 : d.integer(forKey: "quietSeconds"))
         captionLines = d.object(forKey: "captionLines") as? Int ?? 2
         captionFontSize = d.object(forKey: "captionFontSize") as? Double ?? 24
         captionShowsOriginal = d.bool(forKey: "captionShowsOriginal")
@@ -117,11 +131,7 @@ final class AppModel {
         client.onEvent = { [weak self] in self?.handle($0) }
         client.carryover = { [weak self] in self?.transcript.recentContext() }
         audio.onChunk = { [weak self] data, level in
-            Task { @MainActor in
-                guard let self else { return }
-                self.client.send(audio: data)
-                self.level = level
-            }
+            Task { @MainActor in self?.heard(data, level: level) }
         }
         store.track(transcript)
         selectedID = transcript.id
@@ -141,7 +151,7 @@ final class AppModel {
     // MARK: Session
 
     var hasKey: Bool { !apiKey.trimmingCharacters(in: .whitespaces).isEmpty }
-    var isListening: Bool { status == .live || status == .connecting || status == .reconnecting }
+    var isListening: Bool { [.live, .connecting, .reconnecting, .standby].contains(status) }
 
     var sessionConfig: SessionConfig {
         SessionConfig(mode: mode, source: source == "auto" ? nil : source, target: target,
@@ -158,6 +168,8 @@ final class AppModel {
             return
         }
         idleDisconnect?.cancel()
+        quiet.reset()
+        preroll.removeAll()
         if !client.isOpen {
             status = .connecting
             client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), config: sessionConfig)
@@ -186,12 +198,56 @@ final class AppModel {
         client.send(audio: AudioPipeline.silence(milliseconds: 300))
         client.finalize()
         status = .paused
+        disconnectSoon()
+    }
+
+    /// Soniox bills while a stream is open, so a pause keeps it only long enough for a quick resume.
+    private func disconnectSoon() {
+        idleDisconnect?.cancel()
         let work = DispatchWorkItem { [weak self] in
-            guard let self, self.status == .paused else { return }
+            guard let self, [.paused, .standby].contains(self.status) else { return }
             self.client.disconnect()
         }
         idleDisconnect = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 600, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30, execute: work)
+    }
+
+    private func heard(_ data: Data, level: Float) {
+        self.level = level
+        guard pausesWhenQuiet else {
+            client.send(audio: data)
+            return
+        }
+        if status == .standby {
+            preroll.append(data)
+            if preroll.count > 20 { preroll.removeFirst() }
+            if quiet.wake(level: level) { wake() }
+            return
+        }
+        client.send(audio: data)
+        if status == .live, quiet.listen(level: level) { standBy() }
+    }
+
+    private func standBy() {
+        AudioLog.write("quiet for \(quiet.sleepAfter / 10) s: standby")
+        client.finalize()
+        status = .standby
+        quiet.reset()
+        disconnectSoon()
+    }
+
+    private func wake() {
+        AudioLog.write("sound again: resuming")
+        idleDisconnect?.cancel()
+        quiet.reset()
+        if client.isOpen {
+            status = .live
+        } else {
+            status = .connecting
+            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), config: sessionConfig)
+        }
+        preroll.forEach { client.send(audio: $0) }
+        preroll.removeAll()
     }
 
     /// Saves the current session and opens a fresh one.
@@ -275,9 +331,10 @@ final class AppModel {
             transcript.beginStream()
             if status == .connecting || status == .reconnecting { status = .live }
         case .response(let response):
+            if response.tokens.contains(where: { !$0.isMarker }) { quiet.heardSpeech() }
             transcript.ingest(response)
         case .reconnecting:
-            if status != .paused { status = .reconnecting }
+            if ![.paused, .standby].contains(status) { status = .reconnecting }
         case .failed(let error):
             audio.stop()
             level = 0
@@ -290,6 +347,8 @@ final class AppModel {
         let resume = isListening
         client.disconnect()
         transcript.clearProvisional()
+        // Standby wakes into a fresh stream with the new settings.
+        if status == .standby { return }
         if resume {
             status = .connecting
             client.connect(apiKey: apiKey, config: sessionConfig)
@@ -358,8 +417,8 @@ final class AppModel {
             if !captionsHiddenByUser { captionsVisible = true }
         case .error:
             captionsVisible = true
-        case .paused:
-            hideCaptions(after: 60, unlessStatusChanges: .paused)
+        case .paused, .standby:
+            hideCaptions(after: 60, unlessStatusChanges: status)
         case .idle:
             captionsHiddenByUser = false
             // Leave the last lines up long enough to finish reading them.

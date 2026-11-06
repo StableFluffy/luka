@@ -53,6 +53,11 @@ private struct GeneralSettings: View {
                 Text(tr("Change languages from the globe button while listening."))
             }
             Section {
+                Toggle(tr("Pause when it’s quiet"), isOn: $model.pausesWhenQuiet)
+            } footer: {
+                Text(tr("After 3 minutes without sound, Luka closes the Soniox stream, which is billed while open, and starts again when sound returns."))
+            }
+            Section {
                 TextField(tr("Context"), text: $model.context, prompt: Text(tr("Names, topics, jargon…")), axis: .vertical)
                     .lineLimit(3...6)
             } footer: {

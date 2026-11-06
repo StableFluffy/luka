@@ -143,6 +143,9 @@ enum Strings {
         "Liquid Glass": "Liquid Glass",
         "Turn off for solid, higher-contrast captions and controls.": "끄면 자막과 컨트롤이 불투명해져 더 또렷하게 보입니다.",
         "Liquid Glass needs macOS 26. Luka uses system materials on this Mac.": "Liquid Glass는 macOS 26이 필요합니다. 이 Mac에서는 시스템 재질로 표시됩니다.",
+        "Pause when it’s quiet": "조용하면 일시정지",
+        "After 3 minutes without sound, Luka closes the Soniox stream, which is billed while open, and starts again when sound returns.": "3분 동안 소리가 없으면 Luka가 Soniox 연결을 닫고(연결이 열려 있는 동안 요금이 나갑니다), 소리가 다시 나면 이어서 듣습니다.",
+        "Waiting for sound": "소리 대기 중",
     ]
 
     static let zh: [String: String] = [
@@ -289,5 +292,8 @@ enum Strings {
         "Liquid Glass": "Liquid Glass",
         "Turn off for solid, higher-contrast captions and controls.": "关闭后字幕和控件不透明，对比度更高。",
         "Liquid Glass needs macOS 26. Luka uses system materials on this Mac.": "Liquid Glass 需要 macOS 26。在这台 Mac 上 Luka 使用系统材质。",
+        "Pause when it’s quiet": "安静时暂停",
+        "After 3 minutes without sound, Luka closes the Soniox stream, which is billed while open, and starts again when sound returns.": "连续 3 分钟没有声音时，Luka 会关闭 Soniox 连接（连接期间会计费），有声音时自动继续。",
+        "Waiting for sound": "等待声音",
     ]
 }

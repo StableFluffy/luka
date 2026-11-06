@@ -567,7 +567,7 @@ struct StatusPill: View {
     var body: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(model.status == .live ? Color.red : model.isListening ? .orange : .secondary)
+                .fill(model.status == .live ? Color.red : [.connecting, .reconnecting].contains(model.status) ? .orange : .secondary)
                 .frame(width: 7, height: 7)
             Text(model.status.label)
                 .font(.callout.weight(.medium))
