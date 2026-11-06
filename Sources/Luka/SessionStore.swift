@@ -16,6 +16,8 @@ final class SessionStore {
     private(set) var summaries: [Summary] = []
     @ObservationIgnored private var cache: [UUID: Transcript] = [:]
     @ObservationIgnored private var savedRevision: [UUID: Int] = [:]
+    /// Deleted sessions stay out for good, even if a closing view asks to save them afterwards.
+    @ObservationIgnored private var deleted: Set<UUID> = []
     @ObservationIgnored private let directory: URL
 
     init() {
@@ -48,11 +50,13 @@ final class SessionStore {
     }
 
     func track(_ transcript: Transcript) {
+        guard !deleted.contains(transcript.id) else { return }
         cache[transcript.id] = transcript
     }
 
     /// Writes the session if it changed. Sessions with nothing said are never written.
     func save(_ transcript: Transcript) {
+        guard !deleted.contains(transcript.id) else { return }
         cache[transcript.id] = transcript
         guard !transcript.lines.isEmpty, savedRevision[transcript.id] != transcript.revision else { return }
         let snapshot = transcript.snapshot
@@ -69,6 +73,7 @@ final class SessionStore {
     }
 
     func delete(_ id: UUID) {
+        deleted.insert(id)
         try? FileManager.default.removeItem(at: url(id))
         cache[id] = nil
         savedRevision[id] = nil
