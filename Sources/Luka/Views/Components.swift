@@ -145,8 +145,8 @@ struct LanguagePicker: View {
                     }
                 case .threeWay:
                     HStack(alignment: .bottom, spacing: 8) {
-                        LanguageField(label: tr("Between"), selection: $model.languageA, allowsAuto: false)
-                        LanguageField(label: tr("and"), selection: $model.languageB, allowsAuto: false)
+                        LanguageField(label: tr("Language A"), selection: $model.languageA, allowsAuto: false)
+                        LanguageField(label: tr("Language B"), selection: $model.languageB, allowsAuto: false)
                         LanguageField(label: tr("Language C"), selection: $model.languageC, allowsAuto: false)
                     }
                 case .transcribe:
