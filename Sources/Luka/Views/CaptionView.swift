@@ -302,6 +302,20 @@ struct CaptionToolbar: View {
             .lukaGlassID("play", in: namespace)
             .help(model.isListening ? tr("Pause") : tr("Start Listening"))
 
+            if model.status != .idle {
+                Button { withAnimation(.smooth) { model.endSession() } } label: {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .frame(width: 34, height: 34)
+                        .contentShape(.circle)
+                }
+                .buttonStyle(.plain)
+                .lukaGlass(.regular.interactive(), in: .circle)
+                .lukaGlassID("stop", in: namespace)
+                .help(tr("Finish Session"))
+                .transition(.scale.combined(with: .opacity))
+            }
+
             HStack(spacing: 2) {
                 Button { languagesShown.toggle() } label: {
                     Text(model.languageSummary)
@@ -345,6 +359,7 @@ struct CaptionToolbar: View {
                 .lukaGlassID("source", in: namespace)
         }
         .font(.system(size: 13, weight: .semibold))
+        .animation(.smooth(duration: 0.3), value: model.status != .idle)
     }
 
     private func toolbarButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
