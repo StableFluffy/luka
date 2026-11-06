@@ -14,7 +14,7 @@ struct CaptionRoot: View {
     var body: some View {
         let showToolbar = (hovering || languagesShown || model.notice != nil) && !model.locked
         let showStatus = !showToolbar && model.hasKey && !model.transcript.isEmpty
-            && [.connecting, .reconnecting, .paused].contains(model.status)
+            && [.connecting, .reconnecting, .paused, .standby].contains(model.status)
         // Spacing below the gaps between pieces: they morph out of the caption but don't fuse at rest.
         LukaGlassContainer(spacing: 6) {
             VStack(spacing: CaptionPanelController.toolbarGap) {
@@ -33,8 +33,8 @@ struct CaptionRoot: View {
                             .onHover { setHover($0) }
                     } else if showStatus {
                         HStack(spacing: 7) {
-                            Image(systemName: model.status == .paused ? "pause.fill" : "arrow.trianglehead.2.clockwise")
-                                .symbolEffect(.rotate, options: .repeating, isActive: model.status != .paused)
+                            Image(systemName: model.status == .paused ? "pause.fill" : model.status == .standby ? "moon.zzz.fill" : "arrow.trianglehead.2.clockwise")
+                                .symbolEffect(.rotate, options: .repeating, isActive: ![.paused, .standby].contains(model.status))
                             Text(model.status.label)
                         }
                         .font(.callout.weight(.medium))
@@ -262,7 +262,7 @@ struct LiveDot: View {
         let color: Color? = switch model.status {
         case .live: .red
         case .connecting, .reconnecting: .orange
-        case .paused: .secondary
+        case .paused, .standby: .secondary
         default: nil
         }
         if let color {

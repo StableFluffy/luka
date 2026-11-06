@@ -362,6 +362,7 @@ extension AppModel.Status {
         case .live: tr("Listening")
         case .paused: tr("Paused")
         case .reconnecting: tr("Reconnecting…")
+        case .standby: tr("Waiting for sound")
         case .error(let message): message
         }
     }
