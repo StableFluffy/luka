@@ -46,6 +46,13 @@ final class AppModel {
     private(set) var startedAt: Date?
 
     var apiKey: String { didSet { SecretStore.save(apiKey) } }
+    var region: SonioxRegion {
+        didSet {
+            guard region != oldValue else { return }
+            store(region.rawValue, "region")
+            streamSettingsChanged()
+        }
+    }
 
     var mode: TranslationMode { didSet { store(mode.rawValue, "mode"); streamSettingsChanged() } }
     /// Soniox code, or "auto".
@@ -119,6 +126,7 @@ final class AppModel {
         let d = UserDefaults.standard
         let env = ProcessInfo.processInfo.environment
         apiKey = SecretStore.read() ?? env["SONIOX_API_KEY"] ?? ""
+        region = SonioxRegion(rawValue: d.string(forKey: "region") ?? "") ?? .us
         let preferred = Localizer.shared.resolved.rawValue
         mode = TranslationMode(rawValue: d.string(forKey: "mode") ?? "") ?? .translate
         source = d.string(forKey: "source") ?? "auto"
@@ -198,7 +206,7 @@ final class AppModel {
         preroll.removeAll()
         if !client.isOpen {
             status = .connecting
-            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), config: sessionConfig)
+            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
         } else {
             status = .live
         }
@@ -270,7 +278,7 @@ final class AppModel {
             status = .live
         } else {
             status = .connecting
-            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), config: sessionConfig)
+            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
         }
         preroll.forEach { client.send(audio: $0) }
         preroll.removeAll()
@@ -394,7 +402,7 @@ final class AppModel {
         if status == .standby { return }
         if resume {
             status = .connecting
-            client.connect(apiKey: apiKey, config: sessionConfig)
+            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
         } else {
             status = .idle
         }
@@ -413,7 +421,7 @@ final class AppModel {
 
     private static func message(for error: SonioxClient.SonioxError) -> String {
         switch error {
-        case .invalidKey: tr("Soniox rejected the API key.")
+        case .invalidKey: tr("Soniox rejected the API key. Check that the region in Settings matches the key’s project.")
         case .noCredits: tr("Your Soniox account is out of credits.")
         case .rateLimited: tr("Soniox is rate limiting this key. Try again in a moment.")
         case .config(let m): String(format: tr("Soniox didn’t accept the settings: %@"), m)

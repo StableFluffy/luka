@@ -59,6 +59,17 @@ public struct SonioxResponse: Decodable, Sendable {
     }
 }
 
+/// The Soniox deployment that processes and stores a project's data. A key works only
+/// in its project's region.
+public enum SonioxRegion: String, CaseIterable, Sendable {
+    case us, eu, jp, `in`
+
+    /// The real-time speech-to-text host, such as `stt-rt.jp.soniox.com`.
+    public var host: String { self == .us ? "stt-rt.soniox.com" : "stt-rt.\(rawValue).soniox.com" }
+
+    public var websocketURL: URL { URL(string: "wss://\(host)/transcribe-websocket")! }
+}
+
 public enum TranslationMode: String, Codable, CaseIterable, Sendable {
     case translate, twoWay, threeWay, transcribe
 }

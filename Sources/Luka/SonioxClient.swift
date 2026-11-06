@@ -16,7 +16,6 @@ final class SonioxClient {
         case invalidKey, noCredits, rateLimited, config(String), network(String)
     }
 
-    private static let endpoint = URL(string: "wss://stt-rt.soniox.com/transcribe-websocket")!
     private static let maxReconnects = 5
 
     var onEvent: (Event) -> Void = { _ in }
@@ -31,6 +30,7 @@ final class SonioxClient {
     private var generation = 0
     private var config: SessionConfig?
     private var apiKey = ""
+    private var endpoint = SonioxRegion.us.websocketURL
     private var attempts = 0
     private var lastAudio = Date.distantPast
     private var keepalive: Timer?
@@ -41,8 +41,9 @@ final class SonioxClient {
         self.lane = lane
     }
 
-    func connect(apiKey: String, config: SessionConfig) {
+    func connect(apiKey: String, region: SonioxRegion, config: SessionConfig) {
         self.apiKey = apiKey
+        endpoint = region.websocketURL
         self.config = config
         attempts = 0
         open(carryover: carryover())
@@ -52,7 +53,7 @@ final class SonioxClient {
         guard let config else { return }
         closeSocket()
         let gen = generation
-        let task = URLSession.shared.webSocketTask(with: Self.endpoint)
+        let task = URLSession.shared.webSocketTask(with: endpoint)
         self.task = task
         baseMs = clock()
         task.resume()
@@ -187,10 +188,10 @@ final class SonioxStreams {
 
     var isOpen: Bool { clients[0].isOpen }
 
-    func connect(apiKey: String, config: SessionConfig) {
+    func connect(apiKey: String, region: SonioxRegion, config: SessionConfig) {
         disconnect()
         active = min(config.lanes, Self.maxLanes)
-        for client in clients.prefix(active) { client.connect(apiKey: apiKey, config: config) }
+        for client in clients.prefix(active) { client.connect(apiKey: apiKey, region: region, config: config) }
     }
 
     func send(audio: Data) {
