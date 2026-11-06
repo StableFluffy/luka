@@ -84,6 +84,7 @@ struct SessionSidebar: View {
                 if let id = pendingDelete { withAnimation(.smooth) { model.deleteSession(id) } }
                 pendingDelete = nil
             }
+            .keyboardShortcut(.defaultAction)
         } message: {
             Text(tr("The transcript will be removed from this Mac."))
         }
@@ -191,6 +192,7 @@ struct SessionView: View {
             .onChange(of: isStreaming) { if isStreaming { editing = false } }
             .confirmationDialog(tr("Delete this session?"), isPresented: $confirmingDelete) {
                 Button(tr("Delete"), role: .destructive) { withAnimation(.smooth) { model.deleteSession(transcript.id) } }
+                    .keyboardShortcut(.defaultAction)
             } message: {
                 Text(tr("The transcript will be removed from this Mac."))
             }
