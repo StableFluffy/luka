@@ -722,6 +722,8 @@ struct TranscriptEmptyState: View {
     @Environment(AppModel.self) private var model
     var isLive = true
     @State private var key = ""
+    @State private var checking = false
+    @State private var rejected = false
 
     var body: some View {
         VStack(spacing: 22) {
@@ -746,12 +748,18 @@ struct TranscriptEmptyState: View {
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 240)
                         .onSubmit(save)
-                    Button(tr("Save"), action: save)
-                        .lukaGlassButton(prominent: true)
-                        .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .onChange(of: key) { rejected = false }
+                    Button(action: save) {
+                        if checking { ProgressView().controlSize(.small) } else { Text(tr("Save")) }
+                    }
+                    .lukaGlassButton(prominent: true)
+                    .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty || checking)
                 }
-                RegionPicker()
-                    .fixedSize()
+                if rejected {
+                    Label(tr("Soniox doesn’t recognize this key."), systemImage: "xmark.circle.fill")
+                        .foregroundStyle(.red)
+                        .font(.callout)
+                }
                 Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
                     .font(.callout)
             } else if case .error(let message) = model.status, isLive {
@@ -767,10 +775,16 @@ struct TranscriptEmptyState: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    /// Keeps the key only once Soniox accepts it; the region comes with the answer.
     private func save() {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        withAnimation(.smooth) { model.apiKey = trimmed }
+        guard !trimmed.isEmpty, !checking else { return }
+        checking = true
+        Task {
+            let result = await model.submitKey(trimmed)
+            checking = false
+            withAnimation(.smooth) { rejected = result == .invalid }
+        }
     }
 }
 

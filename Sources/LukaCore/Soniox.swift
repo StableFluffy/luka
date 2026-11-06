@@ -68,6 +68,9 @@ public enum SonioxRegion: String, CaseIterable, Sendable {
     public var host: String { self == .us ? "stt-rt.soniox.com" : "stt-rt.\(rawValue).soniox.com" }
 
     public var websocketURL: URL { URL(string: "wss://\(host)/transcribe-websocket")! }
+
+    /// The REST API host, such as `api.jp.soniox.com`.
+    public var apiHost: String { self == .us ? "api.soniox.com" : "api.\(rawValue).soniox.com" }
 }
 
 public enum TranslationMode: String, Codable, CaseIterable, Sendable {
