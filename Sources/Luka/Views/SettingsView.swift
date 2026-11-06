@@ -128,8 +128,18 @@ private struct CaptionSettings: View {
                 }
                 Toggle(tr("Show Original"), isOn: $model.captionShowsOriginal)
                 Toggle(tr("Keep on Top"), isOn: $model.captionPinned)
+                Picker(tr("Three-way translation"), selection: $model.captionLanguage) {
+                    Text(tr("All")).tag("")
+                    let codes = model.sessionConfig.threeWayLanguages
+                    ForEach(codes, id: \.self) { Text(Languages.name($0, in: Localizer.shared.locale)).tag($0) }
+                    if !model.captionLanguage.isEmpty, !codes.contains(model.captionLanguage) {
+                        Text(Languages.name(model.captionLanguage, in: Localizer.shared.locale)).tag(model.captionLanguage)
+                    }
+                }
             } footer: {
                 Text(tr("Drag the caption’s top or bottom edge to add lines, its sides to resize. Drop it near the center and it snaps."))
+                + Text(verbatim: " ")
+                + Text(tr("In three-way mode, captions can show one translation, with the original small above it. Shared Captions always shows all."))
             }
             Section(tr("Transcript")) {
                 LabeledContent(tr("Text size")) {

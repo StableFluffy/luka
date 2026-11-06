@@ -241,7 +241,7 @@ struct SessionView: View {
                 } action: { _, atBottom in
                     following = atBottom
                 }
-                .onChange(of: transcript.lines.last?.translation.count) { scrollIfFollowing() }
+                .onChange(of: transcript.lines.last?.translatedText.count) { scrollIfFollowing() }
                 .onChange(of: transcript.lines.count) { scrollIfFollowing() }
                 .onChange(of: transcript.provisional?.text) { scrollIfFollowing() }
                 .transition(.opacity)
@@ -455,8 +455,8 @@ struct LineView: View {
         VStack(alignment: .leading, spacing: 3) {
             if line.expectsTranslation {
                 let pending = [line.pendingOriginal, live].filter { !$0.isEmpty }.joined(separator: " ")
-                if !line.translation.isEmpty || pending.isEmpty {
-                    Text(line.translation)
+                if !line.translatedText.isEmpty || pending.isEmpty {
+                    Text(line.translatedText)
                         .font(.system(size: size))
                         .foregroundStyle(.primary)
                 }
@@ -490,7 +490,13 @@ private struct EditableLine: View {
         HStack(alignment: .top, spacing: 8) {
             VStack(alignment: .leading, spacing: 4) {
                 if line.expectsTranslation {
-                    field(Binding(get: { line.translation }, set: { [transcript, id = line.id] in transcript.edit(line: id, translation: $0) }), size: size)
+                    if line.extraTranslations?.isEmpty ?? true {
+                        field(Binding(get: { line.translation }, set: { [transcript, id = line.id] in transcript.edit(line: id, translation: $0) }), size: size)
+                    } else {
+                        ForEach(line.translations, id: \.language) { item in
+                            field(Binding(get: { item.text }, set: { [transcript, id = line.id] in transcript.edit(line: id, translation: $0, language: item.language) }), size: size)
+                        }
+                    }
                     if showOriginal {
                         field(Binding(get: { line.original }, set: { [transcript, id = line.id] in transcript.edit(line: id, original: $0) }), size: max(10, size - 2), secondary: true)
                     }

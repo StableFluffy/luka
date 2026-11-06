@@ -141,6 +141,7 @@ struct LukaCommands: Commands {
             Picker(tr("Mode"), selection: Binding(get: { model.mode }, set: { model.mode = $0 })) {
                 Text(tr("Translate")).tag(TranslationMode.translate)
                 Text(tr("Two-way")).tag(TranslationMode.twoWay)
+                Text(tr("Three-way")).tag(TranslationMode.threeWay)
                 Text(tr("Transcribe")).tag(TranslationMode.transcribe)
             }
         }

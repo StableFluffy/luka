@@ -29,7 +29,7 @@ enum Snapshot {
         }
         var text = "status=\(model.status) level=\(model.level)\n"
         for line in model.transcript.lines {
-            text += "[\(model.speakerName(line.speaker))|\(line.language ?? "-")] \(line.original)\n    → \(line.translation) {pending: \(line.pendingOriginal)}\n"
+            text += "[\(model.speakerName(line.speaker))|\(line.language ?? "-")] \(line.original)\n    → \(line.translatedText.replacingOccurrences(of: "\n", with: " | ")) {pending: \(line.pendingOriginal)}\n"
         }
         if let p = model.transcript.provisional { text += "(live \(model.speakerName(p.speaker))) \(p.text)\n" }
         try? text.write(to: dir.appendingPathComponent("transcript-\(tick).txt"), atomically: true, encoding: .utf8)

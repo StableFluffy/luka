@@ -60,7 +60,7 @@ public struct SonioxResponse: Decodable, Sendable {
 }
 
 public enum TranslationMode: String, Codable, CaseIterable, Sendable {
-    case translate, twoWay, transcribe
+    case translate, twoWay, threeWay, transcribe
 }
 
 public struct SessionConfig: Sendable, Equatable {
@@ -70,20 +70,33 @@ public struct SessionConfig: Sendable, Equatable {
     public var target: String
     public var languageA: String
     public var languageB: String
+    public var languageC: String
     public var context: String
 
-    public init(mode: TranslationMode, source: String?, target: String, languageA: String, languageB: String, context: String) {
+    public init(mode: TranslationMode, source: String?, target: String, languageA: String, languageB: String,
+                languageC: String = "zh", context: String) {
         self.mode = mode
         self.source = source
         self.target = target
         self.languageA = languageA
         self.languageB = languageB
+        self.languageC = languageC
         self.context = context
     }
 
+    /// Three-way mode's languages, without repeats.
+    public var threeWayLanguages: [String] {
+        [languageA, languageB, languageC].reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+    }
+
+    /// How many Soniox streams the mode needs. Soniox translates a stream into one language
+    /// (or one pair), so three-way runs a one-way stream per language on the same audio.
+    public var lanes: Int { mode == .threeWay ? threeWayLanguages.count : 1 }
+
     public static let model = "stt-rt-v6"
 
-    public func payload(apiKey: String, carryover: String? = nil) -> [String: Any] {
+    /// Lane 0 carries the transcript; in three-way mode, other lanes only add translations.
+    public func payload(apiKey: String, carryover: String? = nil, lane: Int = 0) -> [String: Any] {
         var cfg: [String: Any] = [
             "api_key": apiKey,
             "model": Self.model,
@@ -91,7 +104,7 @@ public struct SessionConfig: Sendable, Equatable {
             "sample_rate": 16000,
             "num_channels": 1,
             "enable_endpoint_detection": true,
-            "enable_speaker_diarization": true,
+            "enable_speaker_diarization": lane == 0,
             "enable_language_identification": true,
         ]
         switch mode {
@@ -101,6 +114,10 @@ public struct SessionConfig: Sendable, Equatable {
         case .twoWay:
             cfg["translation"] = ["type": "two_way", "language_a": languageA, "language_b": languageB]
             cfg["language_hints"] = [languageA, languageB]
+        case .threeWay:
+            let languages = threeWayLanguages
+            cfg["translation"] = ["type": "one_way", "target_language": languages[min(lane, languages.count - 1)]]
+            cfg["language_hints"] = languages
         case .transcribe:
             if let source { cfg["language_hints"] = [source] }
         }
@@ -111,8 +128,8 @@ public struct SessionConfig: Sendable, Equatable {
         return cfg
     }
 
-    public func json(apiKey: String, carryover: String? = nil) -> String {
-        let data = try! JSONSerialization.data(withJSONObject: payload(apiKey: apiKey, carryover: carryover), options: [.sortedKeys])
+    public func json(apiKey: String, carryover: String? = nil, lane: Int = 0) -> String {
+        let data = try! JSONSerialization.data(withJSONObject: payload(apiKey: apiKey, carryover: carryover, lane: lane), options: [.sortedKeys])
         return String(decoding: data, as: UTF8.self)
     }
 }

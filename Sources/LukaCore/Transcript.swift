@@ -31,9 +31,38 @@ public struct Line: Identifiable, Sendable, Equatable, Codable {
     public var expectsTranslation = false
     public var startedAt: Date
     public var isOpen = true
+    /// The language `translation` is in.
+    public var translationLanguage: String?
+    /// Three-way mode's other translations, by language.
+    public var extraTranslations: [String: String]?
+    /// Where the line sits in the audio sent this run, in ms. Not saved: it only lines up streams while listening.
+    public var startMs: Int?
+    public var endMs: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case id, speaker, language, original, translation, pendingOriginal, expectsTranslation, startedAt, isOpen
+        case translationLanguage, extraTranslations
+    }
+
+    /// Every translation of the line, in a stable language order.
+    public var translations: [(language: String?, text: String)] {
+        var all: [(language: String?, text: String)] = translation.isEmpty ? [] : [(translationLanguage, translation)]
+        for (language, text) in extraTranslations ?? [:] where !text.isEmpty && language != translationLanguage {
+            all.append((language, text))
+        }
+        return all.sorted { Languages.rank($0.language) < Languages.rank($1.language) }
+    }
+
+    /// The translation into `language`, if one has arrived.
+    public func translation(in language: String) -> String? {
+        translations.first { $0.language == language }?.text
+    }
+
+    /// All translations, one per line.
+    public var translatedText: String { translations.map(\.text).joined(separator: "\n") }
 
     /// The text a reader cares about: the translation when one is coming, otherwise what was said.
-    public var primary: String { expectsTranslation ? translation : original }
+    public var primary: String { expectsTranslation ? translatedText : original }
     public var untranslatedTail: String { expectsTranslation ? pendingOriginal : "" }
 }
 
@@ -93,6 +122,27 @@ public final class Transcript: Identifiable {
     @ObservationIgnored public private(set) var nextLineID = 0
     @ObservationIgnored private var nextOrdinal = 1
     @ObservationIgnored private var nextColor = 0
+    /// The end of the latest finalized source word, on the audio clock.
+    @ObservationIgnored private var finalizedMs = 0
+    /// Three-way translation streams, by lane.
+    @ObservationIgnored private var lanes: [Int: Lane] = [:]
+
+    /// A run of translated text from an extra stream, and the stretch of audio it translates.
+    private struct Segment {
+        var language: String
+        var start: Int?
+        var end: Int?
+        /// The line it was attached to; until then, `text` holds what arrived.
+        var line: Int?
+        var text = ""
+    }
+
+    private struct Lane {
+        var spokenStart: Int?
+        var spokenEnd: Int?
+        var translating = false
+        var segments: [Segment] = []
+    }
 
     public static let paletteSize = 8
     static let softLineLimit = 280
@@ -140,7 +190,8 @@ public final class Transcript: Identifiable {
 
     // MARK: Ingest
 
-    public func ingest(_ response: SonioxResponse, at now: Date = .now) {
+    /// `baseMs` is where this stream's audio starts on the audio clock, so its token times line up with other streams.
+    public func ingest(_ response: SonioxResponse, at now: Date = .now, baseMs: Int = 0) {
         var provisionalText = ""
         var provisionalTranslation = ""
         var provisionalSpeaker: SpeakerID?
@@ -156,9 +207,9 @@ public final class Transcript: Identifiable {
             let speaker = token.speaker.map { register(label: $0) }
             if token.isFinal {
                 if token.isTranslation {
-                    if let i = appendTranslation(token.text, speaker: speaker) { translated.insert(i) }
+                    if let i = appendTranslation(token, speaker: speaker) { translated.insert(i) }
                 } else {
-                    appendOriginal(token, speaker: speaker, at: now)
+                    appendOriginal(token, speaker: speaker, at: now, baseMs: baseMs)
                 }
             } else if token.isTranslation {
                 provisionalTranslation += token.text
@@ -178,6 +229,83 @@ public final class Transcript: Identifiable {
             : Provisional(speaker: provisionalSpeaker, language: provisionalLanguage,
                           text: trimmed, translation: provisionalTranslation)
         if next != provisional { provisional = next }
+        if !lanes.isEmpty { resolveSegments(force: false) }
+    }
+
+    /// A three-way stream that hears the same audio but translates into another language.
+    /// Only its translations are kept; each run of them goes to the line whose audio it overlaps most.
+    public func ingestTranslation(_ response: SonioxResponse, lane id: Int, baseMs: Int) {
+        var lane = lanes[id] ?? Lane()
+        for token in response.tokens where token.isFinal && !token.isMarker {
+            if token.isTranslation {
+                if !lane.translating || lane.segments.isEmpty {
+                    lane.segments.append(Segment(language: token.language ?? "", start: lane.spokenStart, end: lane.spokenEnd))
+                    lane.spokenStart = nil
+                    lane.spokenEnd = nil
+                    lane.translating = true
+                }
+                let k = lane.segments.count - 1
+                if let lineID = lane.segments[k].line, let i = lines.firstIndex(where: { $0.id == lineID }) {
+                    appendExtra(token.text, language: lane.segments[k].language, at: i, continuing: true)
+                } else {
+                    lane.segments[k].text += token.text
+                }
+            } else if token.translationStatus == "original" {
+                lane.translating = false
+                if let start = token.startMs, lane.spokenStart == nil { lane.spokenStart = baseMs + start }
+                if let end = token.endMs { lane.spokenEnd = baseMs + end }
+            }
+        }
+        lanes[id] = lane
+        resolveSegments(force: false)
+    }
+
+    /// Attaches waiting translations once the transcript has caught up with their audio; `force` attaches them all now.
+    private func resolveSegments(force: Bool) {
+        for id in lanes.keys {
+            guard var lane = lanes[id] else { continue }
+            for k in lane.segments.indices where lane.segments[k].line == nil {
+                let segment = lane.segments[k]
+                if !force, let end = segment.end, finalizedMs < end - 250 { break }
+                guard let i = lineIndex(start: segment.start, end: segment.end) else { break }
+                lane.segments[k].line = lines[i].id
+                lane.segments[k].text = ""
+                appendExtra(segment.text, language: segment.language, at: i, continuing: false)
+            }
+            let last = lane.segments.count - 1
+            lane.segments = lane.segments.enumerated().filter { $0.element.line == nil || $0.offset == last }.map(\.element)
+            lanes[id] = lane
+        }
+    }
+
+    /// The recent line that overlaps this stretch of audio the most, or the nearest one.
+    private func lineIndex(start: Int?, end: Int?) -> Int? {
+        let timed = lines.indices.suffix(12).filter { lines[$0].startMs != nil }
+        guard let start, !timed.isEmpty else { return timed.last ?? lines.indices.last }
+        let end = max(end ?? start, start)
+        func score(_ i: Int) -> Int {
+            let s = lines[i].startMs!
+            let e = max(lines[i].endMs ?? s, s)
+            let overlap = min(end, e) - max(start, s)
+            return overlap > 0 ? overlap : overlap - 1_000_000
+        }
+        return timed.max { score($0) < score($1) }
+    }
+
+    private func appendExtra(_ text: String, language: String, at i: Int, continuing: Bool) {
+        guard !text.isEmpty else { return }
+        var extras = lines[i].extraTranslations ?? [:]
+        let current = extras[language] ?? ""
+        if current.isEmpty {
+            extras[language] = String(text.drop(while: \.isWhitespace))
+        } else if continuing || text.first?.isWhitespace == true || ["zh", "ja"].contains(language) {
+            extras[language] = current + text
+        } else {
+            extras[language] = current + " " + text
+        }
+        lines[i].extraTranslations = extras
+        lines[i].expectsTranslation = true
+        touch()
     }
 
     /// Call when a new Soniox stream starts; its speaker labels mean new people.
@@ -187,8 +315,11 @@ public final class Transcript: Identifiable {
         epoch += 1
     }
 
+    /// Call when streams stop: drops the live text and attaches any translations still waiting.
     public func clearProvisional() {
         provisional = nil
+        resolveSegments(force: true)
+        lanes = [:]
     }
 
     public func reset() {
@@ -199,10 +330,11 @@ public final class Transcript: Identifiable {
         openLine = nil
         nextOrdinal = 1
         nextColor = 0
+        lanes = [:]
         epoch += 1
     }
 
-    private func appendOriginal(_ token: SonioxToken, speaker: SpeakerID?, at now: Date) {
+    private func appendOriginal(_ token: SonioxToken, speaker: SpeakerID?, at now: Date, baseMs: Int) {
         if let i = openLine, speaker == nil || lines[i].speaker == nil || canonical(lines[i].speaker!) == canonical(speaker!) {
             if lines[i].speaker == nil { lines[i].speaker = speaker }
         } else {
@@ -219,13 +351,19 @@ public final class Transcript: Identifiable {
             lines[i].pendingOriginal += lines[i].pendingOriginal.isEmpty ? String(text.drop(while: \.isWhitespace)) : text
         }
         if lines[i].language == nil { lines[i].language = token.language }
+        if let start = token.startMs, lines[i].startMs == nil { lines[i].startMs = baseMs + start }
+        if let end = token.endMs {
+            lines[i].endMs = baseMs + end
+            finalizedMs = max(finalizedMs, baseMs + end)
+        }
 
         if lines[i].original.count > Self.softLineLimit, let last = text.last, ".?!。？！".contains(last) {
             closeOpenLine()
         }
     }
 
-    private func appendTranslation(_ text: String, speaker: SpeakerID?) -> Int? {
+    private func appendTranslation(_ token: SonioxToken, speaker: SpeakerID?) -> Int? {
+        let text = token.text
         let lower = max(0, lines.count - 8)
         let candidates = lines.indices.reversed().filter { $0 >= lower }
         let sameSpeaker: (Int) -> Bool = { i in
@@ -237,6 +375,7 @@ public final class Transcript: Identifiable {
             ?? lines.indices.last
         else { return nil }
         lines[i].expectsTranslation = true
+        if lines[i].translationLanguage == nil { lines[i].translationLanguage = token.language }
         lines[i].translation += lines[i].translation.isEmpty ? String(text.drop(while: \.isWhitespace)) : text
         return i
     }
@@ -298,10 +437,17 @@ public final class Transcript: Identifiable {
 
     // MARK: Editing
 
-    public func edit(line id: Int, original: String? = nil, translation: String? = nil) {
+    /// `language` picks which translation `translation` replaces; nil or the main one's language edits the main one.
+    public func edit(line id: Int, original: String? = nil, translation: String? = nil, language: String? = nil) {
         guard let i = lines.firstIndex(where: { $0.id == id }) else { return }
         if let original { lines[i].original = original }
-        if let translation { lines[i].translation = translation }
+        if let translation {
+            if let language, language != lines[i].translationLanguage, lines[i].extraTranslations?[language] != nil {
+                lines[i].extraTranslations?[language] = translation
+            } else {
+                lines[i].translation = translation
+            }
+        }
         touch()
     }
 
