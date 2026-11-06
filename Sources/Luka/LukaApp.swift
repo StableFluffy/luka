@@ -29,6 +29,14 @@ struct LukaApp: App {
         .windowToolbarStyle(.unified)
         .commands { LukaCommands(model: model, localizer: localizer) }
 
+        Window(tr("Shared Captions"), id: "presenter") {
+            PresenterView()
+                .environment(model)
+                .id(localizer.language)
+        }
+        .defaultSize(width: 960, height: 540)
+        .defaultLaunchBehavior(.suppressed)
+
         Settings {
             SettingsView()
                 .environment(model)
@@ -166,10 +174,12 @@ struct LukaCommands: Commands {
                 if model.transcriptVisible { dismissWindow(id: "transcript") } else { openWindow(id: "transcript") }
             }
             .keyboardShortcut("2")
+            Button(tr("Shared Captions Window")) { openWindow(id: "presenter") }
+                .keyboardShortcut("3")
             Divider()
-            Button(tr("Bigger Text")) { model.adjustFontSize(1, captions: !isTranscriptKey) }
+            Button(tr("Bigger Text")) { model.adjustFontSize(1, captions: !isTranscriptKey, presenter: isPresenterKey) }
                 .keyboardShortcut("+")
-            Button(tr("Smaller Text")) { model.adjustFontSize(-1, captions: !isTranscriptKey) }
+            Button(tr("Smaller Text")) { model.adjustFontSize(-1, captions: !isTranscriptKey, presenter: isPresenterKey) }
                 .keyboardShortcut("-")
             Button(tr("More Caption Lines")) { model.adjustLines(1) }
                 .keyboardShortcut(.upArrow)
@@ -191,6 +201,10 @@ struct LukaCommands: Commands {
     private var isTranscriptKey: Bool {
         NSApp.keyWindow?.identifier?.rawValue.hasPrefix("transcript") == true
     }
+
+    private var isPresenterKey: Bool {
+        NSApp.keyWindow?.identifier?.rawValue.hasPrefix("presenter") == true
+    }
 }
 
 struct MenuBarContent: View {
@@ -207,6 +221,10 @@ struct MenuBarContent: View {
         Toggle(tr("Captions"), isOn: Binding(get: { model.captionsVisible }, set: { model.setCaptions($0) }))
         Toggle(tr("Lock Captions"), isOn: Binding(get: { model.locked }, set: { model.lock($0) }))
         Button(tr("Show Transcript")) { model.openTranscript() }
+        Button(tr("Shared Captions Window")) {
+            NSApp.activate()
+            openWindow(id: "presenter")
+        }
         Divider()
         SourcePicker()
         Divider()

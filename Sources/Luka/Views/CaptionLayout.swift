@@ -72,8 +72,10 @@ enum CaptionLayout {
         return blocks
     }
 
+    /// `originalBelow` puts the original under its translation. Rows fill from the bottom, so the
+    /// latest original then always fits; above, a long translation can push it out.
     static func rows(_ blocks: [CaptionBlock], width: CGFloat, metrics: CaptionMetrics, dual: Bool, budget: CGFloat,
-                     same: (SpeakerID?, SpeakerID?) -> Bool) -> [CaptionRow] {
+                     originalBelow: Bool = false, same: (SpeakerID?, SpeakerID?) -> Bool) -> [CaptionRow] {
         guard width > 20 else { return [] }
         var remaining = budget
         var visible: [[CaptionRow]] = []
@@ -82,7 +84,7 @@ enum CaptionLayout {
             var paragraphs: [(original: Bool, solid: String, faint: String)] = []
             if dual && block.translated {
                 paragraphs.append((true, block.original, block.originalFaint))
-                paragraphs.append((false, block.solid, ""))
+                paragraphs.insert((false, block.solid, ""), at: originalBelow ? 0 : 1)
             } else {
                 paragraphs.append((false, block.solid, block.faint))
             }

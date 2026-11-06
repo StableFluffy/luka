@@ -150,6 +150,18 @@ private struct CaptionSettings: View {
                 }
                 Toggle(tr("Show Original"), isOn: $model.transcriptShowsOriginal)
             }
+            Section {
+                LabeledContent(tr("Text size")) {
+                    HStack {
+                        Slider(value: $model.presenterFontSize, in: AppModel.presenterFontRange, step: 4)
+                        Text(verbatim: "\(Int(model.presenterFontSize))").monospacedDigit().frame(width: 28, alignment: .trailing)
+                    }
+                }
+            } header: {
+                Text(tr("Shared Captions"))
+            } footer: {
+                Text(tr("A regular window for sharing in video calls, with every translation and the original. Open it with ⌘3 and pick it when sharing a window."))
+            }
         }
         .formStyle(.grouped)
         .frame(height: 470)
@@ -165,6 +177,7 @@ private struct ShortcutSettings: View {
             (tr("Name whoever is speaking"), ["⌘", "E"]),
             (tr("Captions"), ["⌘", "1"]),
             (tr("Show Transcript"), ["⌘", "2"]),
+            (tr("Shared Captions Window"), ["⌘", "3"]),
             (tr("Bigger / Smaller Text"), ["⌘", "+", "−"]),
             (tr("More / Fewer Caption Lines"), ["⌘", "↑", "↓"]),
             (tr("Show Original"), ["⌥", "⌘", "O"]),

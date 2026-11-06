@@ -86,6 +86,7 @@ final class AppModel {
     var transcriptFontSize: Double { didSet { store(transcriptFontSize, "transcriptFontSize") } }
     var transcriptShowsOriginal: Bool { didSet { store(transcriptShowsOriginal, "transcriptShowsOriginal") } }
     var transcriptPinned: Bool { didSet { store(transcriptPinned, "transcriptPinned") } }
+    var presenterFontSize: Double { didSet { store(presenterFontSize, "presenterFontSize") } }
 
     var showsInDock: Bool { didSet { store(showsInDock, "showsInDock"); applyActivationPolicy() } }
     var liquidGlass: Bool { didSet { store(liquidGlass, "liquidGlass") } }
@@ -103,6 +104,7 @@ final class AppModel {
     @ObservationIgnored private var captionsHiddenByUser = false
     @ObservationIgnored private var captionsAutoHide: DispatchWorkItem?
     var transcriptVisible = false
+    var presenterVisible = false
     var locked = false
     var renaming: RenameRequest?
     var notice: String?
@@ -111,6 +113,7 @@ final class AppModel {
     static let captionLineRange = 1...6
     static let captionFontRange = 14.0...64.0
     static let transcriptFontRange = 11.0...28.0
+    static let presenterFontRange = 20.0...96.0
 
     init() {
         let d = UserDefaults.standard
@@ -139,6 +142,7 @@ final class AppModel {
         transcriptFontSize = d.object(forKey: "transcriptFontSize") as? Double ?? 15
         transcriptShowsOriginal = d.object(forKey: "transcriptShowsOriginal") as? Bool ?? true
         transcriptPinned = d.bool(forKey: "transcriptPinned")
+        presenterFontSize = d.object(forKey: "presenterFontSize") as? Double ?? 40
         showsInDock = d.object(forKey: "showsInDock") as? Bool ?? true
         liquidGlass = d.object(forKey: "liquidGlass") == nil ? true : d.bool(forKey: "liquidGlass")
         let visibility = CaptionVisibility(rawValue: d.string(forKey: "captionVisibility") ?? "") ?? .whileListening
@@ -493,8 +497,10 @@ final class AppModel {
         renaming = RenameRequest(session: transcript.id, id: current, place: captionsVisible && !transcriptIsKey ? .caption : .transcript(turn: nil))
     }
 
-    func adjustFontSize(_ delta: Double, captions: Bool) {
-        if captions {
+    func adjustFontSize(_ delta: Double, captions: Bool, presenter: Bool = false) {
+        if presenter {
+            presenterFontSize = (presenterFontSize + delta * 4).clamped(to: Self.presenterFontRange)
+        } else if captions {
             captionFontSize = (captionFontSize + delta * 2).clamped(to: Self.captionFontRange)
         } else {
             transcriptFontSize = (transcriptFontSize + delta).clamped(to: Self.transcriptFontRange)

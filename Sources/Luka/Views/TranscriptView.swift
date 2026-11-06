@@ -171,6 +171,8 @@ struct SessionView: View {
     @State private var speakersShown = false
     @State private var editing = false
     @State private var confirmingDelete = false
+    @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
 
     init(transcript: Transcript) {
         self.transcript = transcript
@@ -343,6 +345,12 @@ struct SessionView: View {
                 Label(tr("Captions"), systemImage: "captions.bubble")
             }
             .help(tr("Show Captions") + "  ⌘1")
+            Toggle(isOn: Binding(
+                get: { model.presenterVisible },
+                set: { if $0 { openWindow(id: "presenter") } else { dismissWindow(id: "presenter") } })) {
+                Label(tr("Shared Captions Window"), systemImage: "rectangle.inset.filled.and.person.filled")
+            }
+            .help(tr("Shared Captions Window") + "  ⌘3")
             Menu {
                 Toggle(tr("Keep on Top"), isOn: $model.transcriptPinned)
                 Button(tr("Export Transcript…")) { model.exportTranscript(transcript) }
