@@ -26,7 +26,7 @@ final class AudioPipeline: @unchecked Sendable {
 
     var isRunning: Bool { lock.withLock { systemCapture != nil || micCapture != nil || feed != nil } }
 
-    func start(_ source: AudioSource, feedFile: URL?) async throws {
+    func start(_ source: AudioSource, microphone: String?, feedFile: URL?) async throws {
         stop()
         lock.withLock {
             self.source = source
@@ -44,7 +44,7 @@ final class AudioPipeline: @unchecked Sendable {
         }
         if source != .system {
             guard await MicrophoneCapture.requestAccess() else { throw CaptureError.microphoneDenied }
-            let capture = MicrophoneCapture { [weak self] in self?.push($0, fromMic: true) }
+            let capture = MicrophoneCapture(deviceUID: microphone) { [weak self] in self?.push($0, fromMic: true) }
             try capture.start()
             lock.withLock { micCapture = capture }
         }

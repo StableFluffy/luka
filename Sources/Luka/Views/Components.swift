@@ -117,6 +117,7 @@ struct LanguagePicker: View {
             HStack(spacing: 8) {
                 modeTile(.translate, "globe", tr("Translate"))
                 modeTile(.twoWay, "arrow.left.arrow.right", tr("Two-way"))
+                modeTile(.threeWay, "point.3.connected.trianglepath.dotted", tr("Three-way"))
                 modeTile(.transcribe, "text.quote", tr("Transcribe"))
             }
 
@@ -141,6 +142,12 @@ struct LanguagePicker: View {
                             model.languageB = a
                         }
                         LanguageField(label: tr("and"), selection: $model.languageB, allowsAuto: false)
+                    }
+                case .threeWay:
+                    HStack(alignment: .bottom, spacing: 8) {
+                        LanguageField(label: tr("Between"), selection: $model.languageA, allowsAuto: false)
+                        LanguageField(label: tr("and"), selection: $model.languageB, allowsAuto: false)
+                        LanguageField(label: tr("Language C"), selection: $model.languageC, allowsAuto: false)
                     }
                 case .transcribe:
                     LanguageField(label: tr("Language"), selection: $model.source, allowsAuto: true)
@@ -206,6 +213,7 @@ struct LanguagePicker: View {
         switch model.mode {
         case .translate: tr("Speech in any language is translated into one language.")
         case .twoWay: tr("For conversations: each side is translated into the other’s language.")
+        case .threeWay: tr("Each language is translated into the other two. Uses three Soniox streams, so it costs three times as much.")
         case .transcribe: tr("Writes down what’s said, without translating.")
         }
     }

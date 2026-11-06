@@ -114,7 +114,7 @@ private func replay(_ fixture: String) throws -> Transcript {
         let back = Transcript(snapshot: try JSONDecoder().decode(TranscriptSnapshot.self, from: data))
         #expect(back.id == t.id)
         #expect(back.title == "Standup")
-        #expect(back.lines == t.lines.map { var l = $0; l.isOpen = false; return l })
+        #expect(back.lines == t.lines.map { var l = $0; l.isOpen = false; l.startMs = nil; l.endMs = nil; return l })
         #expect(back.speaker(first.id)?.name == "Alex")
         #expect(back.lines[0].translation == "고친 번역")
         back.beginStream()

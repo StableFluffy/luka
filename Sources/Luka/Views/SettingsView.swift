@@ -48,6 +48,7 @@ private struct GeneralSettings: View {
             }
             Section {
                 SourcePicker()
+                MicrophonePicker()
                 LabeledContent(tr("Languages")) { Text(model.languageSummary).foregroundStyle(.secondary) }
             } footer: {
                 Text(tr("Change languages from the globe button while listening."))
@@ -66,6 +67,24 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .frame(height: 470)
+    }
+}
+
+private struct MicrophonePicker: View {
+    @Environment(AppModel.self) private var model
+    @State private var devices = InputDevices.shared
+
+    var body: some View {
+        @Bindable var model = model
+        Picker(tr("Microphone"), selection: $model.microphone) {
+            Text(tr("System Default")).tag(String?.none)
+            Divider()
+            ForEach(devices.all) { Text($0.name).tag(Optional($0.uid)) }
+            if let uid = model.microphone, !devices.all.contains(where: { $0.uid == uid }) {
+                Text(tr("Disconnected device")).tag(Optional(uid))
+            }
+        }
+        .disabled(model.audioSource == .system)
     }
 }
 
@@ -109,8 +128,18 @@ private struct CaptionSettings: View {
                 }
                 Toggle(tr("Show Original"), isOn: $model.captionShowsOriginal)
                 Toggle(tr("Keep on Top"), isOn: $model.captionPinned)
+                Picker(tr("Three-way translation"), selection: $model.captionLanguage) {
+                    Text(tr("All")).tag("")
+                    let codes = model.sessionConfig.threeWayLanguages
+                    ForEach(codes, id: \.self) { Text(Languages.name($0, in: Localizer.shared.locale)).tag($0) }
+                    if !model.captionLanguage.isEmpty, !codes.contains(model.captionLanguage) {
+                        Text(Languages.name(model.captionLanguage, in: Localizer.shared.locale)).tag(model.captionLanguage)
+                    }
+                }
             } footer: {
                 Text(tr("Drag the caption’s top or bottom edge to add lines, its sides to resize. Drop it near the center and it snaps."))
+                + Text(verbatim: " ")
+                + Text(tr("In three-way mode, captions can show one translation, with the original small above it. Shared Captions always shows all."))
             }
             Section(tr("Transcript")) {
                 LabeledContent(tr("Text size")) {
@@ -120,6 +149,18 @@ private struct CaptionSettings: View {
                     }
                 }
                 Toggle(tr("Show Original"), isOn: $model.transcriptShowsOriginal)
+            }
+            Section {
+                LabeledContent(tr("Text size")) {
+                    HStack {
+                        Slider(value: $model.presenterFontSize, in: AppModel.presenterFontRange, step: 4)
+                        Text(verbatim: "\(Int(model.presenterFontSize))").monospacedDigit().frame(width: 28, alignment: .trailing)
+                    }
+                }
+            } header: {
+                Text(tr("Shared Captions"))
+            } footer: {
+                Text(tr("A regular window for sharing in video calls, with every translation and the original. Open it with ⌘3 and pick it when sharing a window."))
             }
         }
         .formStyle(.grouped)
@@ -136,6 +177,7 @@ private struct ShortcutSettings: View {
             (tr("Name whoever is speaking"), ["⌘", "E"]),
             (tr("Captions"), ["⌘", "1"]),
             (tr("Show Transcript"), ["⌘", "2"]),
+            (tr("Shared Captions Window"), ["⌘", "3"]),
             (tr("Bigger / Smaller Text"), ["⌘", "+", "−"]),
             (tr("More / Fewer Caption Lines"), ["⌘", "↑", "↓"]),
             (tr("Show Original"), ["⌥", "⌘", "O"]),

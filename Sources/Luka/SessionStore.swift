@@ -85,7 +85,7 @@ final class SessionStore {
     }
 
     private static func summary(of s: TranscriptSnapshot) -> Summary {
-        let first = s.lines.first.map { $0.expectsTranslation && !$0.translation.isEmpty ? $0.translation : $0.original } ?? ""
+        let first = s.lines.first.map { $0.expectsTranslation && !$0.translatedText.isEmpty ? $0.translatedText : $0.original } ?? ""
         return Summary(id: s.id, title: s.title, createdAt: s.createdAt, updatedAt: s.updatedAt, preview: String(first.prefix(120)))
     }
 }

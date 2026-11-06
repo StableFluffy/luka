@@ -115,9 +115,11 @@ struct CaptionSurface: View {
             let names = transcript.visibleSpeakers.map { model.speakerName($0.id) }
             let gutter = names.isEmpty ? 0 : CaptionLayout.labelWidth(names, metrics: metrics, limit: geo.size.width * 0.26)
             let textWidth = geo.size.width - metrics.horizontalPadding * 2 - (gutter > 0 ? gutter + metrics.gutterSpacing : 0) - 4
-            let dual = model.captionShowsOriginal
+            let language = model.captionLanguageFilter
+            // With one translation chosen, the original stays visible, small, for the other languages.
+            let dual = model.captionShowsOriginal || language != nil
             let rows = CaptionLayout.rows(
-                CaptionLayout.blocks(from: transcript, dual: dual),
+                CaptionLayout.blocks(from: transcript, dual: dual, language: language),
                 width: textWidth, metrics: metrics, dual: dual,
                 budget: CGFloat(model.captionLines) * metrics.lineHeight,
                 same: { a, b in a.map(transcript.canonical) == b.map(transcript.canonical) })

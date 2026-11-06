@@ -12,7 +12,7 @@ extension Transcript {
             out += "\n**\(who)** · \(when)\n\n"
             for line in turn.lines {
                 if line.expectsTranslation {
-                    out += "\(line.translation)\n"
+                    out += line.translations.map(\.text).joined(separator: "  \n") + "\n"
                     if includeOriginal { out += "> \(line.original)\n" }
                 } else {
                     out += "\(line.original)\n"

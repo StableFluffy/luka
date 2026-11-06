@@ -42,13 +42,17 @@ struct CaptionMetrics: Equatable {
 
 @MainActor
 enum CaptionLayout {
-    static func blocks(from transcript: Transcript, dual: Bool, limit: Int = 8) -> [CaptionBlock] {
+    /// `language` limits translated lines to that one translation; a line spoken in it shows as said.
+    static func blocks(from transcript: Transcript, dual: Bool, language: String? = nil, limit: Int = 8) -> [CaptionBlock] {
         var blocks: [CaptionBlock] = []
         let provisional = transcript.provisional
         var provisionalPlaced = false
         let recent = transcript.lines.suffix(limit)
         for line in recent {
-            var faint = line.untranslatedTail
+            let spokenInLanguage = language != nil && line.language == language
+            let translated = line.expectsTranslation && !spokenInLanguage
+            let solid = !translated ? line.original : language.map { line.translation(in: $0) ?? "" } ?? line.primary
+            var faint = translated ? line.untranslatedTail : ""
             var originalFaint = ""
             if let p = provisional, line.id == recent.last?.id, line.isOpen,
                p.speaker.map(transcript.canonical) == line.speaker.map(transcript.canonical) || p.speaker == nil {
@@ -58,8 +62,8 @@ enum CaptionLayout {
             }
             blocks.append(CaptionBlock(
                 id: line.id, speaker: line.speaker,
-                solid: line.primary, faint: faint,
-                original: line.original, originalFaint: originalFaint, translated: line.expectsTranslation))
+                solid: solid, faint: faint,
+                original: line.original, originalFaint: originalFaint, translated: translated))
         }
         if let p = provisional, !provisionalPlaced {
             blocks.append(CaptionBlock(id: transcript.nextLineID, speaker: p.speaker, solid: "", faint: p.text,
@@ -68,8 +72,10 @@ enum CaptionLayout {
         return blocks
     }
 
+    /// `originalBelow` puts the original under its translation. Rows fill from the bottom, so the
+    /// latest original then always fits; above, a long translation can push it out.
     static func rows(_ blocks: [CaptionBlock], width: CGFloat, metrics: CaptionMetrics, dual: Bool, budget: CGFloat,
-                     same: (SpeakerID?, SpeakerID?) -> Bool) -> [CaptionRow] {
+                     originalBelow: Bool = false, same: (SpeakerID?, SpeakerID?) -> Bool) -> [CaptionRow] {
         guard width > 20 else { return [] }
         var remaining = budget
         var visible: [[CaptionRow]] = []
@@ -78,7 +84,7 @@ enum CaptionLayout {
             var paragraphs: [(original: Bool, solid: String, faint: String)] = []
             if dual && block.translated {
                 paragraphs.append((true, block.original, block.originalFaint))
-                paragraphs.append((false, block.solid, ""))
+                paragraphs.insert((false, block.solid, ""), at: originalBelow ? 0 : 1)
             } else {
                 paragraphs.append((false, block.solid, block.faint))
             }

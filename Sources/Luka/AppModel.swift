@@ -32,7 +32,7 @@ final class AppModel {
     @ObservationIgnored var openTranscript: () -> Void = {}
     @ObservationIgnored var closeTranscript: () -> Void = {}
     @ObservationIgnored var openSettings: () -> Void = {}
-    @ObservationIgnored let client = SonioxClient()
+    @ObservationIgnored let client = SonioxStreams()
     @ObservationIgnored let audio = AudioPipeline()
     @ObservationIgnored private let defaults = UserDefaults.standard
     @ObservationIgnored private var idleDisconnect: DispatchWorkItem?
@@ -53,8 +53,17 @@ final class AppModel {
     var target: String { didSet { store(target, "target"); streamSettingsChanged() } }
     var languageA: String { didSet { store(languageA, "languageA"); streamSettingsChanged() } }
     var languageB: String { didSet { store(languageB, "languageB"); streamSettingsChanged() } }
+    var languageC: String { didSet { store(languageC, "languageC"); streamSettingsChanged() } }
     var context: String { didSet { store(context, "context") } }
     var audioSource: AudioSource { didSet { store(audioSource.rawValue, "audioSource"); audioSourceChanged() } }
+    /// Core Audio UID of the chosen input device; nil follows the system default.
+    var microphone: String? {
+        didSet {
+            guard microphone != oldValue else { return }
+            if let microphone { store(microphone, "microphone") } else { defaults.removeObject(forKey: "microphone") }
+            if audioSource != .system { audioSourceChanged() }
+        }
+    }
     var pausesWhenQuiet: Bool {
         didSet {
             store(pausesWhenQuiet, "pausesWhenQuiet")
@@ -66,11 +75,18 @@ final class AppModel {
     var captionLines: Int { didSet { store(captionLines, "captionLines") } }
     var captionFontSize: Double { didSet { store(captionFontSize, "captionFontSize") } }
     var captionShowsOriginal: Bool { didSet { store(captionShowsOriginal, "captionShowsOriginal") } }
+    /// In three-way mode, the one translation captions show; empty shows them all.
+    var captionLanguage: String { didSet { store(captionLanguage, "captionLanguage") } }
+    /// `captionLanguage` when it applies: three-way mode, and still one of its languages.
+    var captionLanguageFilter: String? {
+        mode == .threeWay && sessionConfig.threeWayLanguages.contains(captionLanguage) ? captionLanguage : nil
+    }
     var captionStyle: CaptionStyle { didSet { store(captionStyle.rawValue, "captionStyle") } }
     var captionPinned: Bool { didSet { store(captionPinned, "captionPinned") } }
     var transcriptFontSize: Double { didSet { store(transcriptFontSize, "transcriptFontSize") } }
     var transcriptShowsOriginal: Bool { didSet { store(transcriptShowsOriginal, "transcriptShowsOriginal") } }
     var transcriptPinned: Bool { didSet { store(transcriptPinned, "transcriptPinned") } }
+    var presenterFontSize: Double { didSet { store(presenterFontSize, "presenterFontSize") } }
 
     var showsInDock: Bool { didSet { store(showsInDock, "showsInDock"); applyActivationPolicy() } }
     var liquidGlass: Bool { didSet { store(liquidGlass, "liquidGlass") } }
@@ -88,6 +104,7 @@ final class AppModel {
     @ObservationIgnored private var captionsHiddenByUser = false
     @ObservationIgnored private var captionsAutoHide: DispatchWorkItem?
     var transcriptVisible = false
+    var presenterVisible = false
     var locked = false
     var renaming: RenameRequest?
     var notice: String?
@@ -96,6 +113,7 @@ final class AppModel {
     static let captionLineRange = 1...6
     static let captionFontRange = 14.0...64.0
     static let transcriptFontRange = 11.0...28.0
+    static let presenterFontRange = 20.0...96.0
 
     init() {
         let d = UserDefaults.standard
@@ -105,20 +123,26 @@ final class AppModel {
         mode = TranslationMode(rawValue: d.string(forKey: "mode") ?? "") ?? .translate
         source = d.string(forKey: "source") ?? "auto"
         target = d.string(forKey: "target") ?? preferred
-        languageA = d.string(forKey: "languageA") ?? (preferred == "en" ? "ko" : "en")
-        languageB = d.string(forKey: "languageB") ?? preferred
+        let a = d.string(forKey: "languageA") ?? (preferred == "en" ? "ko" : "en")
+        let b = d.string(forKey: "languageB") ?? preferred
+        languageA = a
+        languageB = b
+        languageC = d.string(forKey: "languageC") ?? (["en", "ko", "zh"].first { $0 != a && $0 != b } ?? "ja")
         context = d.string(forKey: "context") ?? ""
         audioSource = AudioSource(rawValue: d.string(forKey: "audioSource") ?? "") ?? .system
+        microphone = d.string(forKey: "microphone")
         pausesWhenQuiet = d.object(forKey: "pausesWhenQuiet") == nil ? true : d.bool(forKey: "pausesWhenQuiet")
         quiet = QuietGate(sleepAfterSeconds: d.object(forKey: "quietSeconds") == nil ? 180 : d.integer(forKey: "quietSeconds"))
         captionLines = d.object(forKey: "captionLines") as? Int ?? 2
         captionFontSize = d.object(forKey: "captionFontSize") as? Double ?? 24
         captionShowsOriginal = d.bool(forKey: "captionShowsOriginal")
+        captionLanguage = d.string(forKey: "captionLanguage") ?? ""
         captionStyle = CaptionStyle(rawValue: d.string(forKey: "captionStyle") ?? "") ?? .glass
         captionPinned = d.object(forKey: "captionPinned") as? Bool ?? true
         transcriptFontSize = d.object(forKey: "transcriptFontSize") as? Double ?? 15
         transcriptShowsOriginal = d.object(forKey: "transcriptShowsOriginal") as? Bool ?? true
         transcriptPinned = d.bool(forKey: "transcriptPinned")
+        presenterFontSize = d.object(forKey: "presenterFontSize") as? Double ?? 40
         showsInDock = d.object(forKey: "showsInDock") as? Bool ?? true
         liquidGlass = d.object(forKey: "liquidGlass") == nil ? true : d.bool(forKey: "liquidGlass")
         let visibility = CaptionVisibility(rawValue: d.string(forKey: "captionVisibility") ?? "") ?? .whileListening
@@ -128,7 +152,9 @@ final class AppModel {
         let args = ProcessInfo.processInfo.arguments
         feedFile = args.firstIndex(of: "--feed").flatMap { args.indices.contains($0 + 1) ? URL(fileURLWithPath: args[$0 + 1]) : nil }
 
-        client.onEvent = { [weak self] in self?.handle($0) }
+        client.onEvent = { [weak self] lane, event in
+            if lane == 0 { self?.handle(event) } else { self?.handleTranslation(event, lane: lane) }
+        }
         client.carryover = { [weak self] in self?.transcript.recentContext() }
         audio.onChunk = { [weak self] data, level in
             Task { @MainActor in self?.heard(data, level: level) }
@@ -155,7 +181,7 @@ final class AppModel {
 
     var sessionConfig: SessionConfig {
         SessionConfig(mode: mode, source: source == "auto" ? nil : source, target: target,
-                      languageA: languageA, languageB: languageB, context: context)
+                      languageA: languageA, languageB: languageB, languageC: languageC, context: context)
     }
 
     func toggleListening() {
@@ -180,7 +206,7 @@ final class AppModel {
         transcript.markStarted()
         Task {
             do {
-                try await audio.start(audioSource, feedFile: feedFile)
+                try await audio.start(audioSource, microphone: microphone, feedFile: feedFile)
             } catch {
                 client.disconnect()
                 status = .error(error.localizedDescription)
@@ -330,16 +356,33 @@ final class AppModel {
         case .connected:
             transcript.beginStream()
             if status == .connecting || status == .reconnecting { status = .live }
-        case .response(let response):
+        case .response(let response, let baseMs):
             if response.tokens.contains(where: { !$0.isMarker }) { quiet.heardSpeech() }
-            transcript.ingest(response)
+            transcript.ingest(response, baseMs: baseMs)
         case .reconnecting:
             if ![.paused, .standby].contains(status) { status = .reconnecting }
         case .failed(let error):
-            audio.stop()
-            level = 0
-            status = .error(Self.message(for: error))
+            fail(error)
         }
+    }
+
+    /// Events from three-way mode's extra streams, which only add translations.
+    private func handleTranslation(_ event: SonioxClient.Event, lane: Int) {
+        switch event {
+        case .response(let response, let baseMs):
+            transcript.ingestTranslation(response, lane: lane, baseMs: baseMs)
+        case .failed(let error):
+            fail(error)
+        case .connected, .reconnecting:
+            break
+        }
+    }
+
+    private func fail(_ error: SonioxClient.SonioxError) {
+        audio.stop()
+        client.disconnect()
+        level = 0
+        status = .error(Self.message(for: error))
     }
 
     private func streamSettingsChanged() {
@@ -361,7 +404,7 @@ final class AppModel {
         guard audio.isRunning else { return }
         Task {
             do {
-                try await audio.start(audioSource, feedFile: feedFile)
+                try await audio.start(audioSource, microphone: microphone, feedFile: feedFile)
             } catch {
                 status = .error(error.localizedDescription)
             }
@@ -454,8 +497,10 @@ final class AppModel {
         renaming = RenameRequest(session: transcript.id, id: current, place: captionsVisible && !transcriptIsKey ? .caption : .transcript(turn: nil))
     }
 
-    func adjustFontSize(_ delta: Double, captions: Bool) {
-        if captions {
+    func adjustFontSize(_ delta: Double, captions: Bool, presenter: Bool = false) {
+        if presenter {
+            presenterFontSize = (presenterFontSize + delta * 4).clamped(to: Self.presenterFontRange)
+        } else if captions {
             captionFontSize = (captionFontSize + delta * 2).clamped(to: Self.captionFontRange)
         } else {
             transcriptFontSize = (transcriptFontSize + delta).clamped(to: Self.transcriptFontRange)
@@ -472,6 +517,7 @@ final class AppModel {
         switch mode {
         case .translate: return "\(source == "auto" ? tr("Auto") : name(source)) → \(name(target))"
         case .twoWay: return "\(name(languageA)) ⇄ \(name(languageB))"
+        case .threeWay: return sessionConfig.threeWayLanguages.map(name).joined(separator: " · ")
         case .transcribe: return source == "auto" ? tr("Transcribe") : name(source)
         }
     }

@@ -11,6 +11,13 @@ public enum Languages {
 
     public static let pinned = ["en", "ko", "zh", "ja"]
 
+    /// Sort key that keeps translations in the same language order everywhere: pinned first, then by code.
+    public static func rank(_ code: String?) -> String {
+        guard let code else { return "~" }
+        if let i = pinned.firstIndex(of: code) { return "0\(i)" }
+        return "1" + code
+    }
+
     public static func name(_ code: String, in locale: Locale) -> String {
         locale.localizedString(forLanguageCode: code).map { $0.capitalized(with: locale) } ?? code.uppercased()
     }
