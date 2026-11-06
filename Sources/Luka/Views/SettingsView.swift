@@ -40,11 +40,15 @@ private struct GeneralSettings: View {
             }
             Section {
                 SecureField(tr("API key"), text: $model.apiKey)
+                RegionPicker()
                 LabeledContent(tr("Model")) { Text(SessionConfig.model).foregroundStyle(.secondary) }
             } header: {
                 Text("Soniox")
             } footer: {
-                Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tr("Pick the region of the Soniox project your key belongs to."))
+                    Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
+                }
             }
             Section {
                 SourcePicker()
@@ -67,6 +71,29 @@ private struct GeneralSettings: View {
         }
         .formStyle(.grouped)
         .frame(height: 470)
+    }
+}
+
+struct RegionPicker: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        @Bindable var model = model
+        Picker(tr("Region"), selection: $model.region) {
+            ForEach(SonioxRegion.allCases, id: \.self) { Text($0.title).tag($0) }
+        }
+        .help(model.region.host)
+    }
+}
+
+extension SonioxRegion {
+    var title: String {
+        switch self {
+        case .us: tr("United States")
+        case .eu: tr("European Union")
+        case .jp: tr("Japan")
+        case .in: tr("India")
+        }
     }
 }
 

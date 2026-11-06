@@ -750,6 +750,8 @@ struct TranscriptEmptyState: View {
                         .lukaGlassButton(prominent: true)
                         .disabled(key.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                RegionPicker()
+                    .fixedSize()
                 Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
                     .font(.callout)
             } else if case .error(let message) = model.status, isLive {
