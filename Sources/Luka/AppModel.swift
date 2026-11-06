@@ -45,12 +45,17 @@ final class AppModel {
     private(set) var level: Float = 0
     private(set) var startedAt: Date?
 
-    var apiKey: String { didSet { SecretStore.save(apiKey) } }
-    var region: SonioxRegion {
+    var apiKey: String {
         didSet {
-            guard region != oldValue else { return }
+            SecretStore.save(apiKey)
+            if apiKey != oldValue { checkKey(after: .milliseconds(600)) }
+        }
+    }
+    /// Where the key's Soniox project lives. Found from the key, never chosen.
+    private(set) var region: SonioxRegion {
+        didSet {
             store(region.rawValue, "region")
-            streamSettingsChanged()
+            if region != oldValue { streamSettingsChanged() }
         }
     }
 
@@ -126,7 +131,8 @@ final class AppModel {
         let d = UserDefaults.standard
         let env = ProcessInfo.processInfo.environment
         apiKey = SecretStore.read() ?? env["SONIOX_API_KEY"] ?? ""
-        region = SonioxRegion(rawValue: d.string(forKey: "region") ?? "") ?? .us
+        let storedRegion = SonioxRegion(rawValue: d.string(forKey: "region") ?? "")
+        region = storedRegion ?? .us
         let preferred = Localizer.shared.resolved.rawValue
         mode = TranslationMode(rawValue: d.string(forKey: "mode") ?? "") ?? .translate
         source = d.string(forKey: "source") ?? "auto"
@@ -169,6 +175,7 @@ final class AppModel {
         }
         store.track(transcript)
         selectedID = transcript.id
+        if hasKey, storedRegion == nil { checkKey(after: .zero) }
         autosave = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.saveLive() }
         }
@@ -204,9 +211,10 @@ final class AppModel {
         idleDisconnect?.cancel()
         quiet.reset()
         preroll.removeAll()
+        retriedRegion = false
         if !client.isOpen {
             status = .connecting
-            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
+            connectStream()
         } else {
             status = .live
         }
@@ -248,6 +256,12 @@ final class AppModel {
 
     private func heard(_ data: Data, level: Float) {
         self.level = level
+        if findingRegion {
+            // Held while the key's region is looked up, then sent, like waking from standby.
+            preroll.append(data)
+            if preroll.count > 50 { preroll.removeFirst() }
+            return
+        }
         guard pausesWhenQuiet else {
             client.send(audio: data)
             return
@@ -278,7 +292,7 @@ final class AppModel {
             status = .live
         } else {
             status = .connecting
-            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
+            connectStream()
         }
         preroll.forEach { client.send(audio: $0) }
         preroll.removeAll()
@@ -387,6 +401,14 @@ final class AppModel {
     }
 
     private func fail(_ error: SonioxClient.SonioxError) {
+        if error == .invalidKey {
+            // Every stream reports the same rejection; the first one decides.
+            if findingRegion { return }
+            if !retriedRegion {
+                retryInKeysRegion()
+                return
+            }
+        }
         audio.stop()
         client.disconnect()
         level = 0
@@ -402,9 +424,108 @@ final class AppModel {
         if status == .standby { return }
         if resume {
             status = .connecting
-            client.connect(apiKey: apiKey.trimmingCharacters(in: .whitespaces), region: region, config: sessionConfig)
+            connectStream()
         } else {
             status = .idle
+        }
+    }
+
+    // MARK: Key and region
+
+    enum KeyState: Equatable {
+        case idle, checking, invalid, unreachable
+    }
+
+    private(set) var keyState: KeyState = .idle
+    @ObservationIgnored private var keyCheck: Task<Void, Never>?
+    /// The key `keyCheck` already covers, so saving a verified key doesn't check it again.
+    @ObservationIgnored private var checkedKey: String?
+    @ObservationIgnored private var findingRegion = false
+    @ObservationIgnored private var retriedRegion = false
+
+    private var trimmedKey: String { apiKey.trimmingCharacters(in: .whitespaces) }
+
+    /// Checks the key in every region and keeps the one that accepts it.
+    private func checkKey(after delay: Duration) {
+        let key = trimmedKey
+        guard key != checkedKey else { return }
+        keyCheck?.cancel()
+        guard !key.isEmpty else {
+            keyState = .idle
+            keyCheck = nil
+            return
+        }
+        keyState = .checking
+        keyCheck = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            let result = await KeyCheck.run(key)
+            guard !Task.isCancelled else { return }
+            apply(result, for: key)
+            keyCheck = nil
+        }
+    }
+
+    private func apply(_ result: KeyCheck.Result, for key: String) {
+        checkedKey = key
+        retriedRegion = false
+        AudioLog.write("key check: \(result)")
+        switch result {
+        case .region(let found):
+            region = found
+            keyState = .idle
+        case .invalid:
+            keyState = .invalid
+        case .unreachable:
+            keyState = .unreachable
+        }
+    }
+
+    /// The first-run key field: keeps the key only if Soniox accepts it somewhere.
+    func submitKey(_ key: String) async -> KeyCheck.Result {
+        keyCheck?.cancel()
+        keyState = .checking
+        let result = await KeyCheck.run(key)
+        apply(result, for: key)
+        if result != .invalid { apiKey = key }
+        return result
+    }
+
+    /// Opens the streams, after a key check in flight has settled the region.
+    private func connectStream() {
+        guard let pending = keyCheck else {
+            client.connect(apiKey: trimmedKey, region: region, config: sessionConfig)
+            return
+        }
+        Task {
+            await pending.value
+            guard status == .connecting else { return }
+            client.connect(apiKey: trimmedKey, region: region, config: sessionConfig)
+        }
+    }
+
+    /// A rejected key may belong to another region: look it up once and reconnect there.
+    private func retryInKeysRegion() {
+        findingRegion = true
+        retriedRegion = true
+        client.disconnect()
+        status = .connecting
+        let key = trimmedKey
+        preroll.removeAll()
+        Task {
+            let result = await KeyCheck.run(key)
+            findingRegion = false
+            guard status == .connecting else { return }
+            if case .region(let found) = result, found != region {
+                AudioLog.write("key belongs to region \(found.rawValue): reconnecting")
+                apply(result, for: key)
+                connectStream()
+                preroll.forEach { client.send(audio: $0) }
+                preroll.removeAll()
+                return
+            }
+            if result == .invalid { keyState = .invalid }
+            fail(result == .unreachable ? .network(tr("Couldn’t reach Soniox.")) : .invalidKey)
         }
     }
 
@@ -421,7 +542,7 @@ final class AppModel {
 
     private static func message(for error: SonioxClient.SonioxError) -> String {
         switch error {
-        case .invalidKey: tr("Soniox rejected the API key. Check that the region in Settings matches the key’s project.")
+        case .invalidKey: tr("Soniox doesn’t recognize this API key. Check it in Settings.")
         case .noCredits: tr("Your Soniox account is out of credits.")
         case .rateLimited: tr("Soniox is rate limiting this key. Try again in a moment.")
         case .config(let m): String(format: tr("Soniox didn’t accept the settings: %@"), m)

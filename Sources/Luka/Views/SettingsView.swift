@@ -40,15 +40,12 @@ private struct GeneralSettings: View {
             }
             Section {
                 SecureField(tr("API key"), text: $model.apiKey)
-                RegionPicker()
+                LabeledContent(tr("Region")) { KeyStatus() }
                 LabeledContent(tr("Model")) { Text(SessionConfig.model).foregroundStyle(.secondary) }
             } header: {
                 Text("Soniox")
             } footer: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(tr("Pick the region of the Soniox project your key belongs to."))
-                    Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
-                }
+                Link(tr("Get a key at console.soniox.com"), destination: URL(string: "https://console.soniox.com")!)
             }
             Section {
                 SourcePicker()
@@ -74,14 +71,28 @@ private struct GeneralSettings: View {
     }
 }
 
-struct RegionPicker: View {
+/// The key's region, found from the key itself, or why it couldn't be.
+struct KeyStatus: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        @Bindable var model = model
-        Picker(tr("Region"), selection: $model.region) {
-            ForEach(SonioxRegion.allCases, id: \.self) { Text($0.title).tag($0) }
+        Group {
+            switch model.keyState {
+            case .checking:
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text(tr("Checking key…"))
+                }
+            case .invalid:
+                Label(tr("Key not recognized"), systemImage: "xmark.circle.fill")
+                    .foregroundStyle(.red)
+            case .unreachable:
+                Text(model.region.title + " · " + tr("not checked, offline"))
+            case .idle:
+                Text(model.hasKey ? model.region.title : "—")
+            }
         }
+        .foregroundStyle(.secondary)
         .help(model.region.host)
     }
 }
